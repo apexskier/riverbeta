@@ -1,0 +1,12 @@
+<h2>Index</h2>
+
+<h3>{{ rivers.length }} Rivers known</h3>
+<ul>
+    <li ng-repeat="river in rivers">{{ river.name }} {{ river.size }} <span class="delete" ng-click="deleteRiver(river._id)">(delete)</span></li>
+</ul>
+
+<h3>{{ runs.length }} Runs known</h3>
+<ul>
+    <li ng-repeat="run in runs">{{ run.name }} {{ run.size }} <span class="delete" ng-click="deleteRun(run._id)">(delete)</span></li>
+</ul>
+

@@ -1,0 +1,14 @@
+<h2>Add a gauge</h2>
+<form role="form">
+    <label for="code">Code</label>
+    <input type="text" name="code" ng-model="formData.code">
+    <select ng-model="formData.source">
+        <option selected="selected" value="">Select a source</option>
+        <option value="usgs">USGS</option>
+        <option value="wadoe">Washington State Dept of Ecology</option>
+    </select>
+    <select ng-model="formData.river_id">
+        <option ng-repeat="river in rivers" value="{{ river._id }}">{{ river.name }} {{ river.size }}</option>
+    </select>
+    <button type="submit" ng-click="createGauge()">Add</button>
+</form>

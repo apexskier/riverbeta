@@ -1,0 +1,11 @@
+<h2>Add a river</h2>
+<form role="form">
+    <label for="name">Name</label>
+    <input type="text" name="name" ng-model="formData.name">
+    <select ng-model="formData.size">
+        <option selected="selected" value="river">River</option>
+        <option value="creek">Creek</option>
+        <option value=""></option>
+    </select>
+    <button type="submit" ng-click="createRiver()">Add</button>
+</form>

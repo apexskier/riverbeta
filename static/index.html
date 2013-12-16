@@ -1,0 +1,28 @@
+<!doctype html>
+
+<html ng-app="riverBeta">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="lib/leaflet/leaflet.css">
+    <title>Riverbeta.net</title>
+</head>
+<body onunload="">
+    <div class="container" ng-controller="MapController">
+        <div ng-view></div>
+        <leaflet defaulst="defaults" center="center" height="480px" width="640px"></leaflet>
+    </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script><!-- load jquery -->
+    <!--<script src="lib/ng-file-upload/angular-file-upload-shim.min.js></script> must be before angular -->
+    <script src="lib/leaflet/leaflet.js"></script>
+    <script src="lib/angular/angular.js"></script><!-- load angular -->
+    <script src="lib/angular/angular-route.js"></script>
+    <script src="lib/ng-file-upload/angular-file-upload.min.js"></script>
+    <script src="lib/angular-leaflet-directive.min.js"></script>
+    <script src="lib/underscore-min.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/controllers.js"></script>
+</body>
+
