@@ -22,7 +22,7 @@ app.use(express.methodOverride());
 // app.use(express.session());
 // app.use(flash());
 app.use(app.router);
-app.use(express.static(path.join(__dirname, 'static')));
+app.use(express.static(path.join(__dirname, 'app')));
 
 /* * * * * * * * * *
  * Database Models *
@@ -107,7 +107,7 @@ app.get('/api/runs', function(req, res) {
     });
 });
 app.post('/api/runs', function(req, res) {
-    var gpxPath = 'static/uploads/gpx/' + req.body.gpx_file.fileName;
+    var gpxPath = 'app/uploads/gpx/' + req.body.gpx_file.fileName;
     var geoJson = togeojson.gpx(jsdom(fs.readFileSync(gpxPath, 'utf8')));
     geoJson.features = _.reject(geoJson.features, function(path) {
         return path.geometry.type != 'LineString' && path.geometry.type != 'MultiLineString';
@@ -254,7 +254,7 @@ app.delete('/api/gauges/:gauge_id', function(req, res) {
 
 
 app.post('/upload/run', function(req, res) {
-    var serverPath = 'static/uploads/gpx/' + req.files.file.name
+    var serverPath = 'app/uploads/gpx/' + req.files.file.name
     fs.rename(req.files.file.path, serverPath, function(err) {
         if (err) {
             console.log('Error uploading: ' + err);
@@ -270,7 +270,7 @@ app.post('/upload/run', function(req, res) {
  * Frontend  *
  * * * * * * */
 app.get('/', function(req, res) {
-    res.sendfile('./static/index.html');
+    res.sendfile('./app/index.html');
 });
 
 http.createServer(app).listen(app.get('port'), function() {

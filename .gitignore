@@ -1,6 +1,6 @@
 bower_components
 node_modules
-static/lib/*/*
+app/lib/*/*
 private.js
-static/uploads/*
+app/uploads/*
 
