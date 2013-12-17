@@ -1,6 +1,6 @@
 bower_components
 node_modules
-app/lib/*/*
-private.js
+app/lib/*
 app/uploads/*
+private.js
 
