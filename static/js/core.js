@@ -2,7 +2,8 @@ var riverBeta = angular.module('riverBeta', [
     'ngRoute',
     'angularFileUpload',
     'leaflet-directive',
-    'riverBetaControllers'
+    'riverBetaControllers',
+    'riverServices'
 ]);
 
 riverBeta.config(['$routeProvider',
@@ -26,6 +27,10 @@ riverBeta.config(['$routeProvider',
             when('/add/gauge', {
                 templateUrl: 'partials/add/gauge.html',
                 controller: 'GaugeAddController'
+            }).
+            when('/detail/gauge/:gauge_id', {
+                templateUrl: 'partials/detail/gauge.html',
+                controller: 'GaugeDetailController'
             }).
             otherwise({
                 redirectTo: '/'

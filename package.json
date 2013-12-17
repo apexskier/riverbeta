@@ -10,6 +10,8 @@
         "mongoose": "*",
         "mongoose-attachments": "*",
         "mongoose-attachments-localfs": "*",
+        "togeojson": "*",
+        "jsdom": "*",
         "underscore": "latest",
         "connect-flash": "latest"
     }

@@ -10,3 +10,8 @@
     <li ng-repeat="run in runs">{{ run.name }} {{ run.size }} <span class="delete" ng-click="deleteRun(run._id)">(delete)</span></li>
 </ul>
 
+<h3>{{ gauges.length }} Gauges known</h3>
+<ul>
+    <li ng-repeat="gauge in gauges"><a href="#/detail/gauge/{{ gauge._id }}">{{ gauge.river_object.name }} {{ gauge.code }}</a> <span class="delete" ng-click="deleteGauge(gauge._id)">(delete)</span></li>
+</ul>
+

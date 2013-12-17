@@ -44,6 +44,7 @@
         <option ng-repeat="river in rivers" value="{{ river._id }}">{{ river.name }} {{ river.size }}</option>
     </select>
     <select ng-model="formData.gauge_id">
+        <option value="">no gauge</option>
         <option ng-repeat="gauge in gauges" value="{{ gauge._id }}">{{ gauge.river_object.name }} - {{ gauge.code }}</option>
     </select>
     <br>

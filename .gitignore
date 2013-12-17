@@ -2,3 +2,5 @@ bower_components
 node_modules
 static/lib/*/*
 private.js
+static/uploads/*
+

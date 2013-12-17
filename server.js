@@ -5,6 +5,8 @@ var http        = require('http'),
     fs          = require('fs'),
     flash       = require('connect-flash'),
     _           = require('underscore'),
+    togeojson   = require('togeojson'),
+    jsdom       = require('jsdom').jsdom;
     privates    = require('./private.js');
 
 var app = express();
@@ -51,9 +53,10 @@ var Run = mongoose.model('Run', {
     gauge : { type: ObjectId, ref: 'Gauge' },
     gpx_file : {
         size : Number,
-        path : String,
+        fileName: String,
         lastModified : Date
-    }
+    },
+    geo_json : { }
 });
 
 /* * * *
@@ -104,21 +107,27 @@ app.get('/api/runs', function(req, res) {
     });
 });
 app.post('/api/runs', function(req, res) {
+    var gpxPath = 'static/uploads/gpx/' + req.body.gpx_file.fileName;
+    var geoJson = togeojson.gpx(jsdom(fs.readFileSync(gpxPath, 'utf8')));
+    geoJson.features = _.reject(geoJson.features, function(path) {
+        return path.geometry.type != 'LineString' && path.geometry.type != 'MultiLineString';
+    });
     Run.create({
         name: req.body.name,
         rating: req.body.rating,
         level: [req.body.level],
         river: req.body.river_id,
         gauge: req.body.gauge_id,
-        gpx_file: req.body.gpx_file
-    }, function(err, runs) {
+        gpx_file: req.body.gpx_file,
+        geo_json: geoJson
+    }, function(err, run) {
         if (err)
             res.send(err);
 
-        Run.find(function(err, run) {
+        Run.find(function(err, runs) {
             if (err)
                 res.send(err);
-            res.json(runs);
+            res.json(run);
         });
     });
 });
@@ -142,6 +151,74 @@ app.get('/api/gauges', function(req, res) {
         if (err)
             res.send(err);
         res.json(gauges);
+    });
+});
+app.get('/api/gauges/:gauge_id', function(req, res) {
+    Gauge.findById(req.params.gauge_id, function(err, gauge) {
+        if (err)
+            res.send(err);
+        res.json(gauge);
+    });
+});
+app.get('/api/gauges/full/:gauge_id', function(req, res) {
+    Gauge.findById(req.params.gauge_id, function(err, gauge) {
+        if (err)
+            res.send(err);
+        switch (gauge.source) {
+            case 'usgs':
+                var url = "http://waterservices.usgs.gov/nwis/iv/?sites=" + gauge.code + "&period=P7D&format=json"
+                http.get(url, function(httpRes) {
+                    var body = '';
+                    httpRes.on('data', function(chunk) {
+                        body += chunk;
+                    });
+                    httpRes.on('end', function() {
+                        var response = JSON.parse(body);
+                        info = {};
+                        for (var key in gauge) {
+                            if (key in gauge.schema.paths && key != 'toString') {
+                                info[key] = _.clone(gauge[key]);
+                            }
+                        }
+                        info.data = {};
+                        for (var i in response['value']['timeSeries']) {
+                            var item = response['value']['timeSeries'][i];
+                            if (!!item['sourceInfo']['siteName']) {
+                                info.name = item['sourceInfo']['siteName'].replace(/\w\S*/g, function(txt) {
+                                    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                                });
+                            }
+                            info.geo_lat = parseFloat(item['sourceInfo']['geoLocation']['geogLocation']['latitude']);
+                            info.geo_lng = parseFloat(item['sourceInfo']['geoLocation']['geogLocation']['longitude']);
+                            var unit = item['variable']['unit']['unitAbbreviation'];
+                            switch (unit) {
+                                case "ft3/s":
+                                    unit = "cfs";
+                                    break;
+                            }
+                            info.data[unit] = {
+                                unit: item['variable']['unit']['unitAbbreviation'],
+                                unitName: item['variable']['variableName'],
+                                unitDesc: item['variable']['variableDescription'],
+                                recent: parseFloat(item['values'][0]['value'][item['values'][0]['value'].length - 1]['value']),
+                                trend: parseFloat(item['values'][0]['value'][item['values'][0]['value'].length - 1]['value']) - parseFloat(item['values'][0]['value'][item['values'][0]['value'].length - 14]['value']),
+                                values: _.reject(_.map(item['values'][0]['value'], function(val) {
+                                    return {
+                                        datetime: val.dateTime,
+                                        val: parseFloat(val.value)
+                                    }
+                                }), function(v) {
+                                    return parseFloat(v.val) == -999999;
+                                })
+                            }
+                        }
+                        res.json(info);
+                    });
+                }).on('error', function(err) {
+                    console.log('Error getting gauge data: ', e);
+                });
+                break;
+        }
     });
 });
 app.post('/api/gauges', function(req, res) {
