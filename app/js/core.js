@@ -3,7 +3,8 @@ var riverBeta = angular.module('riverBeta', [
     'angularFileUpload',
     'leaflet-directive',
     'riverBetaControllers',
-    'riverServices'
+    'riverServices',
+    'd3AngularDirective',
 ]);
 
 riverBeta.config(['$routeProvider',
@@ -20,17 +21,17 @@ riverBeta.config(['$routeProvider',
                 templateUrl: 'partials/add/river.html',
                 controller: 'RiverAddController'
             }).
-            when('/add/run', {
-                templateUrl: 'partials/add/run.html',
-                controller: 'RunAddController'
-            }).
             when('/add/gauge', {
                 templateUrl: 'partials/add/gauge.html',
                 controller: 'GaugeAddController'
             }).
-            when('/detail/gauge/:gauge_id', {
+            when('/add/run', {
+                templateUrl: 'partials/add/run.html',
+                controller: 'RunAddController'
+            }).
+            when('/detail/:type/:id', {
                 templateUrl: 'partials/detail/gauge.html',
-                controller: 'GaugeDetailController'
+                controller: 'DetailController'
             }).
             otherwise({
                 redirectTo: '/'

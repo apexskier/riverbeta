@@ -40,6 +40,7 @@ var Gauge = mongoose.model('Gauge', {
 });
 var Run = mongoose.model('Run', {
     name : String,
+    description : String,
     rating : { // class
         high : Number,
         low : Number
@@ -104,6 +105,13 @@ app.get('/api/runs', function(req, res) {
         if (err)
             res.send(err);
         res.json(runs);
+    });
+});
+app.get('/api/runs/:run_id', function(req, res) {
+    Run.findById(req.params.run_id, function(err, run) {
+        if (err)
+            res.send(err);
+        res.json(run);
     });
 });
 app.post('/api/runs', function(req, res) {

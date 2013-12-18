@@ -7,7 +7,7 @@
 
 <h3>{{ runs.length }} Runs known</h3>
 <ul>
-    <li ng-repeat="run in runs">{{ run.name }} {{ run.size }} <span class="delete" ng-click="deleteRun(run._id)">(delete)</span></li>
+    <li ng-repeat="run in runs"><a href="#/detail/run/{{ run._id }}">{{ run.name }} {{ run.size }}</a> <span class="delete" ng-click="deleteRun(run._id)">(delete)</span></li>
 </ul>
 
 <h3>{{ gauges.length }} Gauges known</h3>

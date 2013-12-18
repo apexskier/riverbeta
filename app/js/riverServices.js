@@ -54,11 +54,15 @@ angular.module('riverServices', [])
             }
         }
         function setUpRun($scope, run) {
-            run.path = new L.geoJson(run.geo_json, {
-                style: 'black',
-                weight: 10,
-                opacity: 0.75
-            }).addTo($scope.map);
+            if (!run.hasOwnProperty('path')) {
+                console.log('adding path for ' + run._id);
+                run.path = new L.geoJson(run.geo_json, {
+                    style: 'black',
+                    weight: 10,
+                    opacity: 0.75
+                });
+                run.path.addTo($scope.map);
+            }
             setColor($scope, run);
         }
 }]);

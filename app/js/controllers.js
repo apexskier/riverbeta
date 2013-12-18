@@ -51,13 +51,15 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                 markers: {
                     enable: leafletEvents.getAvailableMarkerEvents()
                 }
-            }
+            },
+            runs: [],
+            gauges: []
         });
 
         leafletData.getMap().then(function(map) {
             $scope.map = map;
             console.log($scope);
-            map.locate({setView: false, maxZoom: 14});
+            $scope.map.locate({setView: false, maxZoom: 14});
         });
         $scope.$on('leafletDirectiveMap.locationfound', function(e, data) {
             L.circle(data.leafletEvent.latlng, data.leafletEvent.accuracy).addTo($scope.map);
@@ -83,16 +85,19 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                 $scope.rivers = data;
                 $http.get('/api/gauges')
                     .success(function(data) {
-                        $scope.gauges = data;
-                        _.each($scope.gauges, function(gauge) {
-                            gaugeMethods.getFullGauge($scope, gauge);
+                        _.each(data, function(gauge) {
+                            if (!_.where($scope.gauges, {_id: gauge._id}).length) {
+                                $scope.gauges.push(gauge);
+                                gaugeMethods.getFullGauge($scope, gauge);
+                            }
                         });
                         $http.get('/api/runs')
                             .success(function(data) {
-                                $scope.runs = data;
                                 _.each(data, function(run) {
-                                    console.log(run);
-                                    gaugeMethods.setUpRun($scope, run);
+                                    if (!_.where($scope.runs, {_id: run._id}).length) {
+                                        $scope.runs.push(run);
+                                        gaugeMethods.setUpRun($scope, run);
+                                    }
                                 });
                             })
                             .error(function(data) {
@@ -113,7 +118,7 @@ riverBetaControllers.controller('IndexController', ['$scope', '$http',
         $scope.deleteRiver = function(id) {
             $http.delete('/api/rivers/' + id)
                 .success(function(data) {
-                    $scope.rivers = data;
+                    $scope.$parent.rivers = data;
                     console.log(data);
                 })
                 .error(function(data) {
@@ -121,11 +126,11 @@ riverBetaControllers.controller('IndexController', ['$scope', '$http',
                 });
         };
         $scope.deleteRun = function(id) {
-            var path = _.findWhere($scope.runs, { _id: id }).path;
+            var path = _.findWhere($scope.$parent.runs, { _id: id }).path;
             $http.delete('/api/runs/' + id)
                 .success(function(data) {
-                    $scope.map.removeLayer(path);
-                    $scope.runs = data;
+                    $scope.$parent.map.removeLayer(path);
+                    $scope.$parent.runs = data;
                 })
                 .error(function(data) {
                     console.log('Error deleting run: ' + data);
@@ -134,7 +139,7 @@ riverBetaControllers.controller('IndexController', ['$scope', '$http',
         $scope.deleteGauge = function(id) {
             $http.delete('/api/gauges/' + id)
                 .success(function(data) {
-                    $scope.gauges = data;
+                    $scope.$parent.gauges = data;
                     console.log(data);
                 })
                 .error(function(data) {
@@ -148,7 +153,7 @@ riverBetaControllers.controller('RiverAddController', ['$scope', '$http', '$loca
         $scope.createRiver = function() {
             $http.post('/api/rivers', $scope.formData)
                 .success(function(data) {
-                    $scope.rivers.push(data);
+                    $scope.$parent.rivers.push(data);
                     console.log(data);
                     $location.path('/');
                 })
@@ -163,7 +168,7 @@ riverBetaControllers.controller('GaugeAddController', ['$scope', '$http', '$loca
         $scope.createGauge = function() {
             $http.post('/api/gauges', $scope.formData)
                 .success(function(data) {
-                    $scope.gauges.push(data);
+                    $scope.$parent.gauges.push(data);
                     console.log(data);
                     $location.path('/');
                 })
@@ -200,8 +205,8 @@ riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$locati
                     }
                     $http.post('/api/runs', $scope.formData)
                         .success(function(data) {
-                            $scope.runs.push(data);
-                            gaugeMethods.setUpRun($scope, data);
+                            $scope.$parent.runs.push(data);
+                            gaugeMethods.setUpRun($scope.$parent, data);
                             console.log(data);
                             $location.path('/');
                         })
@@ -217,25 +222,48 @@ riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$locati
         };
 }]);
 
-riverBetaControllers.controller('GaugeDetailController', ['$scope', '$http', '$route', '$routeParams', 'gaugeMethods',
+riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route', '$routeParams', 'gaugeMethods',
     function($scope, $http, $route, $routeParams, gaugeMethods) {
-        if ($scope.$parent.hasOwnProperty('gauges')) {
-            console.log($scope.$parent);
-            var object = _.findWhere($scope.$parent.gauges, {_id: $routeParams.gauge_id});
-            console.log(object);
+        console.log($scope);
+        var type = $routeParams.type;
+        var types = type + 's'
+        var id = $routeParams.id;
+        var object = _.findWhere($scope.$parent[types], {_id: id});
+        if ($scope.$parent.hasOwnProperty(types) && object) {
             angular.extend($scope, {
                 detailObject: object
             });
-            $scope.$parent.map.setZoom(12).panTo([object.marker.lat, object.marker.lng]);
-            console.log($scope.detailObject);
+            if (object.hasOwnProperty('marker')) {
+                $scope.$parent.map.setZoom(12).panTo([object.marker.lat, object.marker.lng]);
+            } else if (object.hasOwnProperty('path')) {
+                $scope.$parent.map.fitBounds(object.path.getBounds(), { padding: [20, 20] });
+            } else {
+                console.log("can't pan to");
+                console.log(object);
+            }
         } else {
-            $http.get('/api/gauges/' + $routeParams.gauge_id)
-                .success(function(gauge) {
-                    $scope.gauges = [gauge];
-                    gaugeMethods.getFullGauge($scope, gauge, $route.reload);
+            $http.get('/api/' + types + '/' + id)
+                .success(function(thing) {
+                    var object = _.findWhere($scope.$parent[types], {_id: id});
+                    if (!object) {
+                        object = thing;
+                        $scope.$parent[types].push(object);
+                    }
+                    switch (type) {
+                        case 'gauge':
+                            function cb() {
+                                $route.reload();
+                            }
+                            gaugeMethods.getFullGauge($scope.$parent, object, cb);
+                            break;
+                        case 'run':
+                            gaugeMethods.setUpRun($scope.$parent, object);
+                            $route.reload();
+                            break;
+                    }
                 })
                 .error(function(data) {
-                    console.log('Error loading gauge: ' + data);
+                    console.log('Error loading thing: ' + data);
                 });
         }
 }]);
