@@ -1,7 +1,7 @@
 var riverBetaControllers = angular.module('riverBetaControllers', [ 'ngSanitize' ]);
 
-riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', 'leafletData', 'leafletEvents', 'gaugeMethods',
-    function($scope, $http, $location, leafletData, leafletEvents, gaugeMethods) {
+riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', 'leafletData', 'leafletEvents', 'riverMethods',
+    function($scope, $http, $location, leafletData, leafletEvents, riverMethods) {
         angular.extend($scope, {
             tileLayer: "http://{s}.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png",
             maxZoom: 14,
@@ -52,8 +52,9 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                     enable: leafletEvents.getAvailableMarkerEvents()
                 }
             },
+            rivers: [],
+            gauges: [],
             runs: [],
-            gauges: []
         });
 
         leafletData.getMap().then(function(map) {
@@ -73,6 +74,10 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             console.log('click event');
             console.log(e);
             console.log(args);
+            var marker = _.where($scope.gauges, {_id: args.markerName});
+            if (!!marker) {
+                $location.path('/detail/gauge/' + args.markerName);
+            }
         });
         $scope.$on('leafletDirectiveMap.pathClick', function(e, featureSelected, leafletEvent) {
             console.log(e)
@@ -80,37 +85,15 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             console.log(leafletEvent);
         });
 
-        $http.get('/api/rivers')
-            .success(function(data) {
-                $scope.rivers = data;
-                $http.get('/api/gauges')
-                    .success(function(data) {
-                        _.each(data, function(gauge) {
-                            if (!_.where($scope.gauges, {_id: gauge._id}).length) {
-                                $scope.gauges.push(gauge);
-                                gaugeMethods.getFullGauge($scope, gauge);
-                            }
-                        });
-                        $http.get('/api/runs')
-                            .success(function(data) {
-                                _.each(data, function(run) {
-                                    if (!_.where($scope.runs, {_id: run._id}).length) {
-                                        $scope.runs.push(run);
-                                        gaugeMethods.setUpRun($scope, run);
-                                    }
-                                });
-                            })
-                            .error(function(data) {
-                                console.log('Error loading runs: ' + data);
-                            });
-                    })
-                    .error(function(data) {
-                        console.log('Error loading gauges: ' + data);
-                    });
-            })
-            .error(function(data) {
-                console.log('Error loading rivers: ' + data);
-            });
+        function afterRiversCallback() {
+            riverMethods.resourceQuery($scope, 'gauge', riverMethods.getFullGauge, afterGaugesCallback);
+        }
+        function afterGaugesCallback() {
+            riverMethods.resourceQuery($scope, 'run', riverMethods.setUpRun);
+            riverMethods.resourceQuery($scope, 'rapid');
+        }
+
+        riverMethods.resourceQuery($scope, 'river', null, afterRiversCallback)
     }]);
 
 riverBetaControllers.controller('IndexController', ['$scope', '$http',
@@ -169,8 +152,8 @@ riverBetaControllers.controller('AddController', ['$scope', '$http', '$location'
         };
     }]);
 
-riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$location', '$upload', 'gaugeMethods',
-    function($scope, $http, $location, $upload, gaugeMethods) {
+riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$location', '$upload', 'riverMethods',
+    function($scope, $http, $location, $upload, riverMethods) {
         $scope.selectedFiles = [];
         $scope.onFileSelect = function($files) {
             $scope.progress = [];
@@ -197,7 +180,7 @@ riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$locati
                     $http.post('/api/runs', $scope.formData)
                         .success(function(data) {
                             $scope.$parent.runs.push(data);
-                            gaugeMethods.setUpRun($scope.$parent, data);
+                            riverMethods.setUpRun($scope.$parent, data);
                             console.log(data);
                             $location.path('/');
                         })
@@ -213,8 +196,8 @@ riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$locati
         };
     }]);
 
-riverBetaControllers.controller('EditController', ['$scope', '$http', '$location', '$upload', '$route', '$routeParams', 'gaugeMethods',
-    function($scope, $http, $location, $upload, $route, $routeParams, gaugeMethods) {
+riverBetaControllers.controller('EditController', ['$scope', '$http', '$location', '$upload', '$route', '$routeParams', 'riverMethods',
+    function($scope, $http, $location, $upload, $route, $routeParams, riverMethods) {
         $scope.type = $routeParams.type;
         $scope.types = $scope.type + 's';
         $scope.id = $routeParams.id;
@@ -243,10 +226,10 @@ riverBetaControllers.controller('EditController', ['$scope', '$http', '$location
                             function cb() {
                                 $route.reload();
                             }
-                            gaugeMethods.getFullGauge($scope.$parent, $scope.object, cb);
+                            riverMethods.getFullGauge($scope.$parent, $scope.object, cb);
                             break;
                         case 'run':
-                            gaugeMethods.setUpRun($scope.$parent, $scope.object);
+                            riverMethods.setUpRun($scope.$parent, $scope.object);
                             $route.reload();
                             break;
                     }
@@ -267,8 +250,8 @@ riverBetaControllers.controller('EditController', ['$scope', '$http', '$location
         };
     }]);
 
-riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route', '$routeParams', 'gaugeMethods',
-    function($scope, $http, $route, $routeParams, gaugeMethods) {
+riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route', '$routeParams', 'riverMethods',
+    function($scope, $http, $route, $routeParams, riverMethods) {
         $scope.type = $routeParams.type;
         $scope.types = $scope.type + 's';
         $scope.id = $routeParams.id;
@@ -282,6 +265,12 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
                 $scope.$parent.map.fitBounds($scope.object.path.getBounds(), { padding: [20, 20] });
             } else {
                 console.log("can't pan to");
+                switch ($scope.type) {
+                    case 'river':
+                        // get all river stuff
+                        $scope.object_runs = _.findWhere($scope.$parent.runs, {river: $scope.id});
+                        break;
+                }
             }
         } else {
             $http.get('/api/' + $scope.types + '/' + $scope.id)
@@ -296,10 +285,10 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
                             function cb() {
                                 $route.reload();
                             }
-                            gaugeMethods.getFullGauge($scope.$parent, $scope.object, cb);
+                            riverMethods.getFullGauge($scope.$parent, $scope.object, cb);
                             break;
                         case 'run':
-                            gaugeMethods.setUpRun($scope.$parent, $scope.object);
+                            riverMethods.setUpRun($scope.$parent, $scope.object);
                             $route.reload();
                             break;
                     }

@@ -59,17 +59,53 @@ var Run = mongoose.model('Run', {
     },
     geo_json : { }
 });
+var Rapid = mongoose.model('Rapid', {
+    name : String,
+    description : String,
+    rating : Number,
+    river : { type: ObjectId, ref: 'River' },
+    run : { type: ObjectId, ref: 'Run' }
+});
+
+var map = {
+    rivers: River,
+    gauges: Gauge,
+    runs: Run,
+    rapids: Rapid
+}
 
 /* * * *
  * API *
  * * * */
-app.get('/api/rivers', function(req, res) {
-    River.find(function(err, rivers) {
+app.get('/api/:type', function(req, res) {
+    map[req.params.type].find(function(err, things) {
         if (err)
             res.send(err);
-        res.json(rivers);
+        res.json(things);
     });
 });
+app.get('/api/:type/:id', function(req, res) {
+    map[req.params.type].findById(req.params.id, function(err, thing) {
+        if (err)
+            res.send(err);
+        res.json(thing);
+    });
+});
+app.delete('/api/:type/:id', function(req, res) {
+    map[req.params.type].remove({
+        _id : req.params.id
+    }, function(err, thing) {
+        if (err)
+            res.send(err);
+
+        map[req.params.type].find(function(err, things) {
+            if (err)
+                res.send(err);
+            res.json(things);
+        });
+    });
+});
+
 app.post('/api/rivers', function(req, res) {
     River.create({
         name: req.body.name,
@@ -85,35 +121,7 @@ app.post('/api/rivers', function(req, res) {
         });
     });
 });
-app.delete('/api/rivers/:river_id', function(req, res) {
-    River.remove({
-        _id : req.params.river_id
-    }, function(err, river) {
-        if (err)
-            res.send(err);
 
-        River.find(function(err, rivers) {
-            if (err)
-                res.send(err);
-            res.json(rivers);
-        });
-    });
-});
-
-app.get('/api/runs', function(req, res) {
-    Run.find(function(err, runs) {
-        if (err)
-            res.send(err);
-        res.json(runs);
-    });
-});
-app.get('/api/runs/:run_id', function(req, res) {
-    Run.findById(req.params.run_id, function(err, run) {
-        if (err)
-            res.send(err);
-        res.json(run);
-    });
-});
 app.post('/api/runs', function(req, res) {
     var gpxPath = 'app/uploads/gpx/' + req.body.gpx_file.fileName;
     var geoJson = togeojson.gpx(jsdom(fs.readFileSync(gpxPath, 'utf8')));
@@ -139,8 +147,6 @@ app.post('/api/runs', function(req, res) {
         });
     });
 });
-
-
 app.put('/api/runs/:id', function (req, res){
     return Run.findById(req.params.id, function (err, thing) {
         thing.name = req.body.name;
@@ -159,37 +165,6 @@ app.put('/api/runs/:id', function (req, res){
     });
 });
 
-
-
-app.delete('/api/runs/:run_id', function(req, res) {
-    Run.remove({
-        _id : req.params.run_id
-    }, function(err, run) {
-        if (err)
-            res.send(err);
-
-        Run.find(function(err, runs) {
-            if (err)
-                res.send(err);
-            res.json(runs);
-        });
-    });
-});
-
-app.get('/api/gauges', function(req, res) {
-    Gauge.find(function(err, gauges) {
-        if (err)
-            res.send(err);
-        res.json(gauges);
-    });
-});
-app.get('/api/gauges/:gauge_id', function(req, res) {
-    Gauge.findById(req.params.gauge_id, function(err, gauge) {
-        if (err)
-            res.send(err);
-        res.json(gauge);
-    });
-});
 app.get('/api/gauges/full/:gauge_id', function(req, res) {
     Gauge.findById(req.params.gauge_id, function(err, gauge) {
         if (err)
@@ -267,17 +242,17 @@ app.post('/api/gauges', function(req, res) {
         });
     });
 });
-app.delete('/api/gauges/:gauge_id', function(req, res) {
-    Gauge.remove({
-        _id : req.params.gauge_id
-    }, function(err, gauge) {
-        if (err)
-            res.send(err);
-
-        Gauge.find(function(err, gauges) {
-            if (err)
-                res.send(err);
-            res.json(gauges);
+app.put('/api/gauges/:id', function (req, res){
+    return Gauge.findById(req.params.id, function (err, thing) {
+        thing.name = req.body.name;
+        thing.river = req.body.river;
+        return thing.save(function (err) {
+            if (!err) {
+                console.log("updated");
+            } else {
+                console.log(err);
+            }
+            return res.send(thing);
         });
     });
 });

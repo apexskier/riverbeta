@@ -1,14 +1,11 @@
 angular.module('riverServices', [])
-    .factory('gaugeMethods', ['$http', function($http) {
+    .factory('riverMethods', ['$http', function($http) {
         return {
+            resourceQuery : resourceQuery,
             getFullGauge : getFullGauge,
-            gaugeQuery : gaugeQuery,
             setColor : setColor,
-            setUpRun : setUpRun
+            setUpRun : setUpRun,
         };
-        function gaugeQuery() {
-            return 0;
-        }
         function getFullGauge($scope, gauge, callback) {
             $http.get('/api/gauges/full/' + gauge._id)
                 .success(function(full_gauge) {
@@ -60,10 +57,34 @@ angular.module('riverServices', [])
                     style: 'black',
                     weight: 10,
                     opacity: 0.75
+                })
+                .on('click', function(e) {
+                    console.log(e);
+                    document.location.href = '/#/detail/run/' + run._id;
                 });
                 run.path.addTo($scope.map);
             }
             setColor($scope, run);
+        }
+        function resourceQuery($scope, type, perItem, callback) {
+            var types = type + 's'
+            $http.get('/api/' + types)
+                .success(function(data) {
+                    _.each(data, function(item) {
+                        if (!_.where($scope[types], {_id: item._id}).length) {
+                            $scope[types].push(item);
+                            if (typeof perItem == 'function') {
+                                perItem($scope, item);
+                            }
+                        }
+                    });
+                    if (typeof callback == 'function') {
+                        callback();
+                    }
+                })
+                .error(function(data) {
+                    console.log('Error loading ' + types + ': ' + data);
+                });
         }
     }])
     .filter('getRiverName', function() {
