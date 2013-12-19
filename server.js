@@ -45,11 +45,11 @@ var Run = mongoose.model('Run', {
         high : Number,
         low : Number
     },
-    level : [{
+    level : {
         units : String,
         high : Number,
         low : Number
-    }],
+    },
     river : { type: ObjectId, ref: 'River' },
     gauge : { type: ObjectId, ref: 'Gauge' },
     gpx_file : {
@@ -57,7 +57,10 @@ var Run = mongoose.model('Run', {
         fileName: String,
         lastModified : Date
     },
-    geo_json : { }
+    loc : {
+        'type' : { type: String },
+        coordinates : []
+    }
 });
 var Rapid = mongoose.model('Rapid', {
     name : String,
@@ -65,8 +68,10 @@ var Rapid = mongoose.model('Rapid', {
     rating : Number,
     river : { type: ObjectId, ref: 'River' },
     run : { type: ObjectId, ref: 'Run' },
-    geo_lat : Number,
-    geo_lng : Number
+    loc : {
+        'type' : { type: String },
+        coordinates : []
+    }
 });
 
 var map = {
@@ -88,9 +93,14 @@ app.get('/api/:type', function(req, res) {
 });
 app.get('/api/:type/:id', function(req, res) {
     map[req.params.type].findById(req.params.id, function(err, thing) {
-        if (err)
+        console.log(thing);
+        if (err) {
             res.send(err);
-        res.json(thing);
+        } else if (!thing) {
+            res.status(404).send('Not found');
+        } else {
+            res.json(thing);
+        }
     });
 });
 app.delete('/api/:type/:id', function(req, res) {
@@ -106,6 +116,9 @@ app.delete('/api/:type/:id', function(req, res) {
             res.json(things);
         });
     });
+});
+app.get('/api/:nw,:ne,:se,:sw', function(req, res) {
+
 });
 
 app.post('/api/rivers', function(req, res) {
@@ -127,27 +140,20 @@ app.post('/api/rivers', function(req, res) {
 app.post('/api/runs', function(req, res) {
     var gpxPath = 'app/uploads/gpx/' + req.body.gpx_file.fileName;
     var geoJson = togeojson.gpx(jsdom(fs.readFileSync(gpxPath, 'utf8')));
-    geoJson.features = _.reject(geoJson.features, function(path) {
-        return path.geometry.type != 'LineString' && path.geometry.type != 'MultiLineString';
-    });
-    Run.create({
-        name: req.body.name,
-        rating: req.body.rating,
-        level: [req.body.level],
-        river: req.body.river_id,
-        gauge: req.body.gauge_id,
-        gpx_file: req.body.gpx_file,
-        geo_json: geoJson
-    }, function(err, run) {
-        if (err)
-            res.send(err);
-
-        Run.find(function(err, runs) {
-            if (err)
+    req.body.loc = _.reject(geoJson.features, function(path) {
+        return path.geometry.type != 'LineString';
+    })[0].geometry;
+    console.log(req.body);
+    if (!!req.body.loc.coordinates.length) {
+        Run.create(req.body, function(err, thing) {
+            console.log(thing);
+            if (err) {
                 res.send(err);
-            res.json(run);
+            } else {
+                res.json(thing);
+            }
         });
-    });
+    }
 });
 app.put('/api/runs/:id', function (req, res){
     return Run.findById(req.params.id, function (err, thing) {
@@ -171,6 +177,9 @@ app.get('/api/gauges/full/:gauge_id', function(req, res) {
     Gauge.findById(req.params.gauge_id, function(err, gauge) {
         if (err)
             res.send(err);
+        if (!gauge) {
+            res.status(404).send('Not found');
+        }
         switch (gauge.source) {
             case 'usgs':
                 var url = "http://waterservices.usgs.gov/nwis/iv/?sites=" + gauge.code + "&period=P7D&format=json"

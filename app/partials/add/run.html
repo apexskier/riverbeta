@@ -1,9 +1,10 @@
 <h2>Add run</h2>
 <form>
-    <input type="name" ng-model="formData.name" placeholder="Name">
+    <input name="name" ng-model="object.name" placeholder="Name">
+    <textarea name="description" ng-model="object.description"></textarea>
     <br>
     <label>Class</label>
-    <select ng-model="formData.rating.low">
+    <select ng-model="object.rating.low">
         <option value="0" selected>From</option>
         <option value="1">I</option>
         <option value="2">I+</option>
@@ -17,7 +18,7 @@
         <option value="10">V+</option>
         <option value="11">VI</option>
     </select>
-    <select ng-model="formData.rating.high">
+    <select ng-model="object.rating.high">
         <option value="0" selected>To</option>
         <option value="1">I</option>
         <option value="2">I+</option>
@@ -32,23 +33,20 @@
         <option value="11">VI</option>
     </select>
     <br>
-    <input type="number" ng-model="formData.level.low" placeholder="Lowest runnable level">
-    <input type="number" ng-model="formData.level.high" placeholder="Highest runnable level">
-    <select ng-model="formData.level.units">
+    <input type="number" ng-model="object.level.low" placeholder="Lowest runnable level">
+    <input type="number" ng-model="object.level.high" placeholder="Highest runnable level">
+    <select ng-model="object.level.units">
         <option value="cfs" selected>CFS</option>
         <option value="ft">Feet</option>
         <option value="m">Meters</option>
     </select>
     <br>
-    <select ng-model="formData.river_id">
-        <option ng-repeat="river in rivers" value="{{ river._id }}">{{ river.name }} {{ river.size }}</option>
-    </select>
-    <select ng-model="formData.gauge_id">
-        <option value="">no gauge</option>
-        <option ng-repeat="gauge in gauges" value="{{ gauge._id }}">{{ gauge.river_object.name }} - {{ gauge.code }}</option>
+    <select ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>
+    <select ng-model="object.gauge" ng-options="g._id as g.name + ' - ' + g.code for g in gauges">
+        <option value="">-- select gauge --</option>
     </select>
     <br>
-    <input type="file" name="gpx" ng-model="formData.gpx" ng-file-select="onFileSelect($files)">
+    <input type="file" name="gpx" ng-model="object.gpx" ng-file-select="onFileSelect($files)">
     <br>
     <button type="submit" ng-click="createRun()">Add</button>
 </form>

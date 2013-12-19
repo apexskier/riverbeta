@@ -36,6 +36,11 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                         type: 'group',
                         visible: true
                     },
+                    rapids: {
+                        name: 'Rapids',
+                        type: 'group',
+                        visible: true
+                    },
                     pois: {
                         name: 'Markers',
                         type: 'group',
@@ -90,10 +95,10 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
 
         function afterRiversCallback() {
             riverMethods.resourceQuery($scope, 'gauge', riverMethods.getFullGauge, afterGaugesCallback);
+            riverMethods.resourceQuery($scope, 'rapid', riverMethods.setUpRapid);
         }
         function afterGaugesCallback() {
             riverMethods.resourceQuery($scope, 'run', riverMethods.setUpRun);
-            riverMethods.resourceQuery($scope, 'rapid');
         }
 
         riverMethods.resourceQuery($scope, 'river', null, afterRiversCallback)
@@ -103,11 +108,15 @@ riverBetaControllers.controller('IndexController', ['$scope', '$http',
     function($scope, $http) {
         $scope.deleteThing = function(id, type) {
             var types = type + 's'
+            var thing = _.findWhere($scope[types], {_id: id});
             $http.delete('/api/' + type + 's/' + id)
                 .success(function(data) {
                     switch (type) {
                         case 'run':
-                            $scope.$parent.map.removeLayer(path);
+                            $scope.$parent.map.removeLayer(thing.path);
+                            break;
+                        case 'rapid':
+                            // TODO: remove rapid marker
                             break;
                     }
                     $scope.$parent[types] = _.reject($scope.$parent[types], function(item) {
@@ -142,15 +151,19 @@ riverBetaControllers.controller('AddController', ['$scope', '$http', '$location'
         if ($scope.markerTypes.indexOf($scope.type) > -1) {
             // new object has a point location associated with it.
             // add a marker for this point and set up events
+            $scope.object.loc = {
+                type: 'Point',
+                coordinates: [0, 0]
+            }
             var center = $scope.$parent.map.getCenter();
-            $scope.object.geo_lat = Math.round(center.lat  * Math.pow(10, 10)) / Math.pow(10, 10);
-            $scope.object.geo_lng = Math.round(center.lng * Math.pow(10, 10)) / Math.pow(10, 10);
+            $scope.object.loc.coordinates[0] = Math.round(center.lat  * Math.pow(10, 10)) / Math.pow(10, 10);
+            $scope.object.loc.coordinates[1] = Math.round(center.lng * Math.pow(10, 10)) / Math.pow(10, 10);
             $scope.centerMarker = new L.marker(center, {
                 draggable: true,
                 title: 'Center Marker'
             }).on('move', function(e) {
-                $scope.object.geo_lat = Math.round(e.latlng.lat * Math.pow(10, 10)) / Math.pow(10, 10);
-                $scope.object.geo_lng = Math.round(e.latlng.lng * Math.pow(10, 10)) / Math.pow(10, 10);
+                $scope.object.loc.coordinates[0] = Math.round(e.latlng.lat * Math.pow(10, 10)) / Math.pow(10, 10);
+                $scope.object.loc.coordinates[1] = Math.round(e.latlng.lng * Math.pow(10, 10)) / Math.pow(10, 10);
             }).addTo($scope.$parent.map);
             $scope.$parent.map.on('click', function(e) {
                 $scope.centerMarker.setLatLng([e.latlng.lat, e.latlng.lng]);
@@ -183,17 +196,17 @@ riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$locati
                     file: file
                 }).then(function(response) {
                     console.log('Uploaded: ' + response.data.path);
-                    $scope.formData.gpx_file = {
+                    $scope.object.gpx_file = {
                         size: response.config.file.size,
                         fileName: response.config.file.name,
                         lastModified: response.config.file.lastModifiedDate
                     }
-                    $http.post('/api/runs', $scope.formData)
+                    $http.post('/api/runs', $scope.object)
                         .success(function(data) {
                             $scope.$parent.runs.push(data);
                             riverMethods.setUpRun($scope.$parent, data);
                             console.log(data);
-                            $location.path('/');
+                            $location.path('/detail/run/' + data._id);
                         })
                         .error(function(data) {
                             console.log('Error: ' + data);
@@ -234,10 +247,7 @@ riverBetaControllers.controller('EditController', ['$scope', '$http', '$location
                     }
                     switch ($scope.type) {
                         case 'gauge':
-                            function cb() {
-                                $route.reload();
-                            }
-                            riverMethods.getFullGauge($scope.$parent, $scope.object, cb);
+                            riverMethods.getFullGauge($scope.$parent, $scope.object, $route.reload);
                             break;
                         case 'run':
                             riverMethods.setUpRun($scope.$parent, $scope.object);
@@ -268,15 +278,23 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
         $scope.id = $routeParams.id;
         $scope.templateUrl = 'partials/detail/' + $scope.type + '.html';
         $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
-        if ($scope.$parent.hasOwnProperty($scope.types) && $scope.object) {
-            console.log($scope.object);
-            if ($scope.object.hasOwnProperty('marker')) {
-                $scope.$parent.map.setZoom(12).panTo([$scope.object.marker.lat, $scope.object.marker.lng])
+        if ($scope.$parent.hasOwnProperty($scope.types) && !!$scope.object) {
+            var zoom = 12;
+            if ($scope.type == 'rapid') {
+                zoom = 14;
+            }
+            if ($scope.object.hasOwnProperty('loc') && $scope.object.loc.type == "Point") {
+                $scope.$parent.map.setZoom(zoom).panTo([$scope.object.loc.coordinates[0], $scope.object.loc.coordinates[1]])
+            } else if ($scope.object.hasOwnProperty('marker')) {
+                $scope.$parent.map.setZoom(zoom).panTo([$scope.object.marker.lat, $scope.object.marker.lng])
             } else if ($scope.object.hasOwnProperty('path')) {
                 $scope.$parent.map.fitBounds($scope.object.path.getBounds(), { padding: [20, 20] });
             } else {
                 console.log("can't pan to");
                 switch ($scope.type) {
+                    case 'rapid':
+                        riverMethods.setUpRapid($scope.$parent, $scope.object, $route.reload);
+                        break;
                     case 'river':
                         // get all river stuff
                         $scope.object_runs = _.findWhere($scope.$parent.runs, {river: $scope.id});
@@ -286,22 +304,26 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
         } else {
             $http.get('/api/' + $scope.types + '/' + $scope.id)
                 .success(function(thing) {
-                    $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
-                    if (!$scope.object) {
-                        $scope.object = thing;
-                        $scope.$parent[$scope.types].push($scope.object);
-                    }
-                    switch ($scope.type) {
-                        case 'gauge':
-                            function cb() {
+                    if (!!thing) {
+                        $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
+                        if (!$scope.object) {
+                            $scope.object = thing;
+                            $scope.$parent[$scope.types].push($scope.object);
+                        }
+                        switch ($scope.type) {
+                            case 'gauge':
+                                riverMethods.getFullGauge($scope.$parent, $scope.object, $route.reload);
+                                break;
+                            case 'run':
+                                riverMethods.setUpRun($scope.$parent, $scope.object);
                                 $route.reload();
-                            }
-                            riverMethods.getFullGauge($scope.$parent, $scope.object, cb);
-                            break;
-                        case 'run':
-                            riverMethods.setUpRun($scope.$parent, $scope.object);
-                            $route.reload();
-                            break;
+                                break;
+                            case 'rapid':
+                                riverMethods.setUpRapid($scope.$parent, $scope.object, $route.reload);
+                                break;
+                        }
+                    } else {
+                        console.log('no such ' + $scope.type);
                     }
                 })
                 .error(function(data) {

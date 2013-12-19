@@ -5,8 +5,10 @@ angular.module('riverServices', [])
             getFullGauge : getFullGauge,
             setColor : setColor,
             setUpRun : setUpRun,
+            setUpRapid : setUpRapid
         };
         function getFullGauge($scope, gauge, callback) {
+            console.log(gauge);
             $http.get('/api/gauges/full/' + gauge._id)
                 .success(function(full_gauge) {
                     _.extend(gauge, full_gauge);
@@ -32,9 +34,9 @@ angular.module('riverServices', [])
             if (run.hasOwnProperty('path')) {
                 gauge = _.findWhere($scope.gauges, {_id: run.gauge});
                 if (gauge && gauge.hasOwnProperty('data')) {
-                    var current_flow = gauge.data[run.level[0].units].recent;
-                    var min_flow = run.level[0].low;
-                    var max_flow = run.level[0].high;
+                    var current_flow = gauge.data[run.level.units].recent;
+                    var min_flow = run.level.low;
+                    var max_flow = run.level.high;
                     var color = 'black';
                     if (current_flow > min_flow && current_flow < max_flow) {
                         // TODO: try to calculate this on a logarithmic scale eventually.
@@ -52,19 +54,33 @@ angular.module('riverServices', [])
         }
         function setUpRun($scope, run) {
             if (!run.hasOwnProperty('path')) {
-                console.log('adding path for ' + run._id);
-                run.path = new L.geoJson(run.geo_json, {
-                    style: 'black',
-                    weight: 10,
-                    opacity: 0.75
-                })
-                .on('click', function(e) {
-                    console.log(e);
-                    document.location.href = '/#/detail/run/' + run._id;
-                });
-                run.path.addTo($scope.map);
+                if (!!run.loc.coordinates.length) {
+                    run.path = new L.geoJson(run.loc, {
+                        style: 'black',
+                        weight: 10,
+                        opacity: 0.75
+                    })
+                    .on('click', function(e) {
+                        console.log(e);
+                        document.location.href = '/#/detail/run/' + run._id;
+                    });
+                    run.path.addTo($scope.map);
+                }
             }
             setColor($scope, run);
+        }
+        function setUpRapid($scope, rapid, callback) {
+            console.log('adding rapid marker ' + rapid.name)
+            $scope.markers[rapid._id] = {
+                lat: rapid.loc.coordinates[0],
+                lng: rapid.loc.coordinates[1],
+                message: rapid.name,
+                layer: 'rapids'
+            };
+            rapid.marker = $scope.markers[rapid._id];
+            if (typeof callback == 'function') {
+                callback();
+            }
         }
         function resourceQuery($scope, type, perItem, callback) {
             var types = type + 's'
