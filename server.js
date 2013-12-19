@@ -64,7 +64,9 @@ var Rapid = mongoose.model('Rapid', {
     description : String,
     rating : Number,
     river : { type: ObjectId, ref: 'River' },
-    run : { type: ObjectId, ref: 'Run' }
+    run : { type: ObjectId, ref: 'Run' },
+    geo_lat : Number,
+    geo_lng : Number
 });
 
 var map = {
@@ -254,6 +256,18 @@ app.put('/api/gauges/:id', function (req, res){
             }
             return res.send(thing);
         });
+    });
+});
+
+app.post('/api/rapids', function(req, res) {
+    console.log(req.body);
+    Rapid.create(req.body, function(err, thing) {
+        console.log(thing);
+        if (err) {
+            res.send(err);
+        } else {
+            res.json(thing);
+        }
     });
 });
 

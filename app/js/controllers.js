@@ -46,7 +46,8 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             controls: {
                 position: 'topleft'
             },
-            markers: { },
+            markers: {},
+            centerMarker: {},
             events: {
                 markers: {
                     enable: leafletEvents.getAvailableMarkerEvents()
@@ -55,6 +56,8 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             rivers: [],
             gauges: [],
             runs: [],
+            rapids: [],
+            markerTypes: ['gauge', 'rapid', 'poi']
         });
 
         leafletData.getMap().then(function(map) {
@@ -98,35 +101,21 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
 
 riverBetaControllers.controller('IndexController', ['$scope', '$http',
     function($scope, $http) {
-        $scope.deleteRiver = function(id) {
-            $http.delete('/api/rivers/' + id)
+        $scope.deleteThing = function(id, type) {
+            var types = type + 's'
+            $http.delete('/api/' + type + 's/' + id)
                 .success(function(data) {
-                    $scope.$parent.rivers = data;
-                    console.log(data);
+                    switch (type) {
+                        case 'run':
+                            $scope.$parent.map.removeLayer(path);
+                            break;
+                    }
+                    $scope.$parent[types] = _.reject($scope.$parent[types], function(item) {
+                        return item._id == id;
+                    });
                 })
                 .error(function(data) {
-                    console.log('Error deleting river: ' + data);
-                });
-        };
-        $scope.deleteRun = function(id) {
-            var path = _.findWhere($scope.$parent.runs, { _id: id }).path;
-            $http.delete('/api/runs/' + id)
-                .success(function(data) {
-                    $scope.$parent.map.removeLayer(path);
-                    $scope.$parent.runs = data;
-                })
-                .error(function(data) {
-                    console.log('Error deleting run: ' + data);
-                });
-        };
-        $scope.deleteGauge = function(id) {
-            $http.delete('/api/gauges/' + id)
-                .success(function(data) {
-                    $scope.$parent.gauges = data;
-                    console.log(data);
-                })
-                .error(function(data) {
-                    console.log('Error deleting gauge: ' + data);
+                    console.log('Error deleting ' + type + ': ' + data);
                 });
         };
     }]);
@@ -147,9 +136,31 @@ riverBetaControllers.controller('AddController', ['$scope', '$http', '$location'
                     $location.path('/detail/' + $scope.type + '/' + data._id);
                 })
                 .error(function(data) {
-                    console.og('Error: ' + data);
+                    console.log('Error: ' + data);
                 });
         };
+        if ($scope.markerTypes.indexOf($scope.type) > -1) {
+            // new object has a point location associated with it.
+            // add a marker for this point and set up events
+            var center = $scope.$parent.map.getCenter();
+            $scope.object.geo_lat = Math.round(center.lat  * Math.pow(10, 10)) / Math.pow(10, 10);
+            $scope.object.geo_lng = Math.round(center.lng * Math.pow(10, 10)) / Math.pow(10, 10);
+            $scope.centerMarker = new L.marker(center, {
+                draggable: true,
+                title: 'Center Marker'
+            }).on('move', function(e) {
+                $scope.object.geo_lat = Math.round(e.latlng.lat * Math.pow(10, 10)) / Math.pow(10, 10);
+                $scope.object.geo_lng = Math.round(e.latlng.lng * Math.pow(10, 10)) / Math.pow(10, 10);
+            }).addTo($scope.$parent.map);
+            $scope.$parent.map.on('click', function(e) {
+                $scope.centerMarker.setLatLng([e.latlng.lat, e.latlng.lng]);
+            });
+            // remove events and marker when we leave this view.
+            $scope.$on('$destroy', function() {
+                $scope.$parent.map.removeLayer($scope.centerMarker);
+                $scope.$parent.map.off('click');
+            });
+        }
     }]);
 
 riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$location', '$upload', 'riverMethods',
