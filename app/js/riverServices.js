@@ -65,4 +65,10 @@ angular.module('riverServices', [])
             }
             setColor($scope, run);
         }
-}]);
+    }])
+    .filter('getRiverName', function() {
+        return function(id, $scope) {
+            var river = _.findWhere($scope.rivers, {_id: id})
+            return river.name + ' ' + river.size;
+        }
+    });

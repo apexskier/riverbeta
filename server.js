@@ -139,6 +139,28 @@ app.post('/api/runs', function(req, res) {
         });
     });
 });
+
+
+app.put('/api/runs/:id', function (req, res){
+    return Run.findById(req.params.id, function (err, thing) {
+        thing.name = req.body.name;
+        thing.description = req.body.description;
+        thing.level = req.body.level;
+        thing.river = req.body.river;
+        thing.gauge = req.body.gauge;
+        return thing.save(function (err) {
+            if (!err) {
+                console.log("updated");
+            } else {
+                console.log(err);
+            }
+            return res.send(thing);
+        });
+    });
+});
+
+
+
 app.delete('/api/runs/:run_id', function(req, res) {
     Run.remove({
         _id : req.params.run_id

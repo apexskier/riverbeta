@@ -9,31 +9,28 @@ var riverBeta = angular.module('riverBeta', [
 
 riverBeta.config(['$routeProvider',
     function($routeProvider) {
-        $routeProvider.
-            when('/', {
+        $routeProvider
+            .when('/', {
                 templateUrl: 'partials/index.html',
                 controller: 'IndexController'
-            }).
-            when('/add', {
-                redirectTo: '/'
-            }).
-            when('/add/river', {
-                templateUrl: 'partials/add/river.html',
-                controller: 'RiverAddController'
-            }).
-            when('/add/gauge', {
-                templateUrl: 'partials/add/gauge.html',
-                controller: 'GaugeAddController'
-            }).
-            when('/add/run', {
+            })
+            .when('/add/run', {
                 templateUrl: 'partials/add/run.html',
                 controller: 'RunAddController'
-            }).
-            when('/detail/:type/:id', {
-                templateUrl: 'partials/detail/gauge.html',
+            })
+            .when('/add/:type', {
+                templateUrl: 'partials/add/index.html',
+                controller: 'AddController'
+            })
+            .when('/edit/:type/:id', {
+                templateUrl: 'partials/edit/index.html',
+                controller: 'EditController'
+            })
+            .when('/detail/:type/:id', {
+                templateUrl: 'partials/detail/index.html',
                 controller: 'DetailController'
-            }).
-            otherwise({
+            })
+            .otherwise({
                 redirectTo: '/'
             });
     }

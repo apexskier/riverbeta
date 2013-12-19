@@ -1,3 +1,6 @@
-<h2>{{ detailObject.name }}</h2>
+<div ng-repeat="measure in object.data">
+    <h3 ng-bind-html="measure.unitName"></h3>
+    <p>Currently {{ measure.recent }} {{ measure.unit }} and {{ measure.trend > 0 ? "rising" : measure.trend < 0 ? "falling" : "stable" }}.</p>
+</div>
 
 <d3-graph></d3-graph>

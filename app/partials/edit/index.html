@@ -1,0 +1,5 @@
+<h2>Edit {{ type }} {{ object.name ? object.name : id }}</h2>
+<form role="form">
+    <div ng-include src="templateUrl"></div>
+    <button type="submit" ng-click="updateThing()">Update</button>
+</form>

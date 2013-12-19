@@ -1,4 +1,4 @@
-var riverBetaControllers = angular.module('riverBetaControllers', []);
+var riverBetaControllers = angular.module('riverBetaControllers', [ 'ngSanitize' ]);
 
 riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', 'leafletData', 'leafletEvents', 'gaugeMethods',
     function($scope, $http, $location, leafletData, leafletEvents, gaugeMethods) {
@@ -111,7 +111,7 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             .error(function(data) {
                 console.log('Error loading rivers: ' + data);
             });
-}]);
+    }]);
 
 riverBetaControllers.controller('IndexController', ['$scope', '$http',
     function($scope, $http) {
@@ -146,37 +146,28 @@ riverBetaControllers.controller('IndexController', ['$scope', '$http',
                     console.log('Error deleting gauge: ' + data);
                 });
         };
-}]);
+    }]);
 
-riverBetaControllers.controller('RiverAddController', ['$scope', '$http', '$location',
-    function($scope, $http, $location) {
-        $scope.createRiver = function() {
-            $http.post('/api/rivers', $scope.formData)
+riverBetaControllers.controller('AddController', ['$scope', '$http', '$location', '$routeParams',
+    function($scope, $http, $location, $routeParams) {
+        $scope.object = {};
+        $scope.type = $routeParams.type;
+        $scope.types = $scope.type + 's';
+        $scope.templateUrl = 'partials/add/' + $scope.type + '.html';
+        $scope.createThing = function() {
+            console.log($scope.object);
+            $http.post('/api/' + $scope.types, $scope.object)
                 .success(function(data) {
-                    $scope.$parent.rivers.push(data);
+                    $scope.$parent[$scope.types].push(data);
+                    console.log($scope.types);
                     console.log(data);
-                    $location.path('/');
+                    $location.path('/detail/' + $scope.type + '/' + data._id);
                 })
                 .error(function(data) {
-                    console.log('Error: ' + data);
+                    console.og('Error: ' + data);
                 });
         };
-}]);
-
-riverBetaControllers.controller('GaugeAddController', ['$scope', '$http', '$location',
-    function($scope, $http, $location) {
-        $scope.createGauge = function() {
-            $http.post('/api/gauges', $scope.formData)
-                .success(function(data) {
-                    $scope.$parent.gauges.push(data);
-                    console.log(data);
-                    $location.path('/');
-                })
-                .error(function(data) {
-                    console.log('Error: ' + data);
-                });
-        };
-}]);
+    }]);
 
 riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$location', '$upload', 'gaugeMethods',
     function($scope, $http, $location, $upload, gaugeMethods) {
@@ -220,44 +211,42 @@ riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$locati
                 });
             }
         };
-}]);
+    }]);
 
-riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route', '$routeParams', 'gaugeMethods',
-    function($scope, $http, $route, $routeParams, gaugeMethods) {
-        console.log($scope);
-        var type = $routeParams.type;
-        var types = type + 's'
-        var id = $routeParams.id;
-        var object = _.findWhere($scope.$parent[types], {_id: id});
-        if ($scope.$parent.hasOwnProperty(types) && object) {
-            angular.extend($scope, {
-                detailObject: object
-            });
-            if (object.hasOwnProperty('marker')) {
-                $scope.$parent.map.setZoom(12).panTo([object.marker.lat, object.marker.lng]);
-            } else if (object.hasOwnProperty('path')) {
-                $scope.$parent.map.fitBounds(object.path.getBounds(), { padding: [20, 20] });
+riverBetaControllers.controller('EditController', ['$scope', '$http', '$location', '$upload', '$route', '$routeParams', 'gaugeMethods',
+    function($scope, $http, $location, $upload, $route, $routeParams, gaugeMethods) {
+        $scope.type = $routeParams.type;
+        $scope.types = $scope.type + 's';
+        $scope.id = $routeParams.id;
+        $scope.templateUrl = 'partials/edit/' + $scope.type + '.html';
+        $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
+        if ($scope.$parent.hasOwnProperty($scope.types) && $scope.object) {
+            console.log($scope.object);
+            if ($scope.object.hasOwnProperty('marker')) {
+                $scope.$parent.map.setZoom(12).panTo([$scope.object.marker.lat, $scope.object.marker.lng])
+            } else if ($scope.object.hasOwnProperty('path')) {
+                $scope.$parent.map.fitBounds($scope.object.path.getBounds(), { padding: [20, 20] });
             } else {
                 console.log("can't pan to");
-                console.log(object);
+                console.log($scope.object);
             }
         } else {
-            $http.get('/api/' + types + '/' + id)
+            $http.get('/api/' + $scope.types + '/' + $scope.id)
                 .success(function(thing) {
-                    var object = _.findWhere($scope.$parent[types], {_id: id});
-                    if (!object) {
-                        object = thing;
-                        $scope.$parent[types].push(object);
+                    $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
+                    if (!$scope.object) {
+                        $scope.object = thing;
+                        $scope.$parent[$scope.types].push($scope.object);
                     }
-                    switch (type) {
+                    switch ($scope.type) {
                         case 'gauge':
                             function cb() {
                                 $route.reload();
                             }
-                            gaugeMethods.getFullGauge($scope.$parent, object, cb);
+                            gaugeMethods.getFullGauge($scope.$parent, $scope.object, cb);
                             break;
                         case 'run':
-                            gaugeMethods.setUpRun($scope.$parent, object);
+                            gaugeMethods.setUpRun($scope.$parent, $scope.object);
                             $route.reload();
                             break;
                     }
@@ -266,4 +255,57 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
                     console.log('Error loading thing: ' + data);
                 });
         }
-}]);
+        $scope.updateThing = function() {
+            console.log($scope.object);
+            $http.put('/api/' + $scope.types + '/' + $scope.id, _.omit($scope.object, 'path'))
+                .success(function(data) {
+                    $location.path('/detail/' + $scope.type + '/' + data._id);
+                })
+                .error(function(err) {
+                    console.log('Error: ' + err);
+                });
+        };
+    }]);
+
+riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route', '$routeParams', 'gaugeMethods',
+    function($scope, $http, $route, $routeParams, gaugeMethods) {
+        $scope.type = $routeParams.type;
+        $scope.types = $scope.type + 's';
+        $scope.id = $routeParams.id;
+        $scope.templateUrl = 'partials/detail/' + $scope.type + '.html';
+        $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
+        if ($scope.$parent.hasOwnProperty($scope.types) && $scope.object) {
+            console.log($scope.object);
+            if ($scope.object.hasOwnProperty('marker')) {
+                $scope.$parent.map.setZoom(12).panTo([$scope.object.marker.lat, $scope.object.marker.lng])
+            } else if ($scope.object.hasOwnProperty('path')) {
+                $scope.$parent.map.fitBounds($scope.object.path.getBounds(), { padding: [20, 20] });
+            } else {
+                console.log("can't pan to");
+            }
+        } else {
+            $http.get('/api/' + $scope.types + '/' + $scope.id)
+                .success(function(thing) {
+                    $scope.object = _.findWhere($scope.$parent[$scope.types], {_id: $scope.id});
+                    if (!$scope.object) {
+                        $scope.object = thing;
+                        $scope.$parent[$scope.types].push($scope.object);
+                    }
+                    switch ($scope.type) {
+                        case 'gauge':
+                            function cb() {
+                                $route.reload();
+                            }
+                            gaugeMethods.getFullGauge($scope.$parent, $scope.object, cb);
+                            break;
+                        case 'run':
+                            gaugeMethods.setUpRun($scope.$parent, $scope.object);
+                            $route.reload();
+                            break;
+                    }
+                })
+                .error(function(data) {
+                    console.log('Error loading thing: ' + data);
+                });
+        }
+    }]);
