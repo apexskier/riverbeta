@@ -8,7 +8,6 @@ angular.module('riverServices', [])
             setUpRapid : setUpRapid
         };
         function getFullGauge($scope, gauge, callback) {
-            console.log(gauge);
             $http.get('/api/gauges/full/' + gauge._id)
                 .success(function(full_gauge) {
                     _.extend(gauge, full_gauge);
@@ -49,6 +48,20 @@ angular.module('riverServices', [])
                     run.path.setStyle({ color: color });
                 } else {
                     run.path.setStyle({ color: 'black'});
+                    if (!gauge) {
+                        $http.get('/api/gauges/' + run.gauge)
+                            .success(function(gauge) {
+                                if (!_.where($scope.gauges, {_id: gauge._id}).length) {
+                                    $scope.gauges.push(gauge);
+                                    getFullGauge($scope, gauge);
+                                }
+                            })
+                            .error(function(data) {
+                                console.log('Error loading thing: ' + data);
+                            });
+                    } else {
+                        getFullGauge($scope, gauge);
+                    }
                 }
             }
         }
@@ -72,8 +85,8 @@ angular.module('riverServices', [])
         function setUpRapid($scope, rapid, callback) {
             console.log('adding rapid marker ' + rapid.name)
             $scope.markers[rapid._id] = {
-                lat: rapid.loc.coordinates[0],
-                lng: rapid.loc.coordinates[1],
+                lat: rapid.loc.coordinates[1],
+                lng: rapid.loc.coordinates[0],
                 message: rapid.name,
                 layer: 'rapids'
             };
@@ -82,9 +95,17 @@ angular.module('riverServices', [])
                 callback();
             }
         }
-        function resourceQuery($scope, type, perItem, callback) {
-            var types = type + 's'
-            $http.get('/api/' + types)
+        function resourceQuery($scope, options, perItem, callback, center, distance) {
+            var types = false;
+            var url = '';
+            if (typeof options == 'string') {
+                types = options + 's';
+                url = '/api/' + types
+            } else {
+                types = options.type + 's';
+                url = '/api/' + types + '/near/' + options.center[1] + '/' + options.center[0] + '/' + options.distance;
+            }
+            $http.get(url)
                 .success(function(data) {
                     _.each(data, function(item) {
                         if (!_.where($scope[types], {_id: item._id}).length) {
@@ -106,6 +127,10 @@ angular.module('riverServices', [])
     .filter('getRiverName', function() {
         return function(id, $scope) {
             var river = _.findWhere($scope.rivers, {_id: id})
-            return river.name + ' ' + river.size;
+            if (river) {
+                return river.name + ' ' + river.size;
+            } else {
+                return '';
+            }
         }
     });

@@ -23,7 +23,7 @@
 
 <h3>{{ rapids.length }} Rapids known</h3>
 <ul>
-    <li ng-repeat="rapid in rapids"><a href="#/detail/rapid/{{ rapid._id }}">{{ rapid.river|getRiverName:this }} {{ rapid.name }}</a>
+    <li ng-repeat="rapid in rapids"><a href="#/detail/rapid/{{ rapid._id }}"> {{ rapid.name }}</a>
     <span class="delete" ng-click="deleteThing(rapid._id, 'rapid')">(delete)</span>
     <a href="#/edit/rapid/{{rapid._id}}">(edit)</a></li>
 </ul>

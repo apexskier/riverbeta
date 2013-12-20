@@ -1,7 +1,7 @@
 var riverBetaControllers = angular.module('riverBetaControllers', [ 'ngSanitize' ]);
 
-riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', 'leafletData', 'leafletEvents', 'riverMethods',
-    function($scope, $http, $location, leafletData, leafletEvents, riverMethods) {
+riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', '$routeParams', 'leafletData', 'leafletEvents', 'riverMethods',
+    function($scope, $http, $location, $routeParams, leafletData, leafletEvents, riverMethods) {
         angular.extend($scope, {
             tileLayer: "http://{s}.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png",
             maxZoom: 14,
@@ -15,7 +15,6 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                         layerOptions: {
                             subdomains: ['a', 'b', 'c'],
                             attribution: '&copy; <a href="http://www.opencyclemap.org/copyright">OpenCycleMap</a> contributors - &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                            continuousWorld: true,
                             detectRetina: true
                         }
                     },
@@ -62,21 +61,71 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             gauges: [],
             runs: [],
             rapids: [],
-            markerTypes: ['gauge', 'rapid', 'poi']
+            markerTypes: ['gauge', 'rapid', 'poi'],
         });
+        riverMethods.resourceQuery($scope, 'river')
 
         leafletData.getMap().then(function(map) {
             $scope.map = map;
             console.log($scope);
-            $scope.map.locate({setView: false, maxZoom: 14});
+            var locurlre = /(?:-?\d{1,3}\.?\d*),(?:-?\d{1,3}\.?\d*),(?:\d{1,3})/
+            var locurlmatch = locurlre.exec($location.path())
+            var locateSetView = false;
+            if (locurlmatch) {
+                locurlmatch = locurlmatch[0].split(',');
+                $scope.map.setView([locurlmatch[0], locurlmatch[1]], locurlmatch[2]);
+            } else if ($location.path().length < 2) {
+                locateSetView = true;
+            }
+            $scope.map.locate({setView: locateSetView, maxZoom: 12});
+
+            function getLocalData() {
+                var bounds = $scope.map.getBounds();
+                var sw = bounds.getSouthWest();
+                var ne = bounds.getNorthEast();
+                var dist = Math.acos(Math.sin(sw.lat) * Math.sin(ne.lat) + Math.cos(sw.lat) * Math.cos(ne.lat) * Math.cos(sw.lng - ne.lng));
+                var center = $scope.map.getCenter();
+                var lat = Math.round(center.lat * 1000000) / 1000000;
+                var lng = Math.round(center.lng * 1000000) / 1000000;
+                riverMethods.resourceQuery($scope, 'gauge', null, afterGaugesCallback);
+                riverMethods.resourceQuery($scope, {
+                    type: 'rapid',
+                    center: [lng, lat],
+                    distance: dist
+                }, riverMethods.setUpRapid);
+            }
+            function afterGaugesCallback() {
+                var bounds = $scope.map.getBounds();
+                var sw = bounds.getSouthWest();
+                var ne = bounds.getNorthEast();
+                var dist = Math.acos(Math.sin(sw.lat) * Math.sin(ne.lat) + Math.cos(sw.lat) * Math.cos(ne.lat) * Math.cos(sw.lng - ne.lng));
+                var center = $scope.map.getCenter();
+                var lat = Math.round(center.lat * 1000000) / 1000000;
+                var lng = Math.round(center.lng * 1000000) / 1000000;
+                riverMethods.resourceQuery($scope, {
+                    type: 'run',
+                    center: [lng, lat],
+                    distance: dist
+                }, riverMethods.setUpRun);
+            }
+            function updateUrl(e, args) {
+                var center = $scope.map.getCenter();
+                var lat = Math.round(center.lat * 1000000) / 1000000;
+                var lng = Math.round(center.lng * 1000000) / 1000000;
+                if (locurlre.test($location.path())) {
+                    $location.path($location.path().replace(locurlre, lat + ',' + lng + ',' + args.leafletEvent.target._zoom));
+                } else {
+                    $location.path($location.path() + '/' + lat + ',' + lng + ',' + args.leafletEvent.target._zoom);
+                }
+                getLocalData();
+            }
+            $scope.$on('leafletDirectiveMap.moveend', updateUrl);
+            $scope.$on('leafletDirectiveMap.zoomend', updateUrl);
         });
+
         $scope.$on('leafletDirectiveMap.locationfound', function(e, data) {
+            console.log('locationfound');
             L.circle(data.leafletEvent.latlng, data.leafletEvent.accuracy).addTo($scope.map);
-        });
-        $scope.$on('leafletDirectivePath.click', function(e, args) {
-            console.log('click event');
-            console.log(e);
-            console.log(args);
         });
         $scope.$on('leafletDirectiveMarker.click', function(e, args) {
             console.log('click event');
@@ -87,25 +136,10 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                 $location.path('/detail/gauge/' + args.markerName);
             }
         });
-        $scope.$on('leafletDirectiveMap.pathClick', function(e, featureSelected, leafletEvent) {
-            console.log(e)
-            console.log(featureSelected);
-            console.log(leafletEvent);
-        });
-
-        function afterRiversCallback() {
-            riverMethods.resourceQuery($scope, 'gauge', riverMethods.getFullGauge, afterGaugesCallback);
-            riverMethods.resourceQuery($scope, 'rapid', riverMethods.setUpRapid);
-        }
-        function afterGaugesCallback() {
-            riverMethods.resourceQuery($scope, 'run', riverMethods.setUpRun);
-        }
-
-        riverMethods.resourceQuery($scope, 'river', null, afterRiversCallback)
     }]);
 
-riverBetaControllers.controller('IndexController', ['$scope', '$http',
-    function($scope, $http) {
+riverBetaControllers.controller('IndexController', ['$scope', '$http', '$routeParams',
+    function($scope, $http, $routeParams) {
         $scope.deleteThing = function(id, type) {
             var types = type + 's'
             var thing = _.findWhere($scope[types], {_id: id});
@@ -151,19 +185,19 @@ riverBetaControllers.controller('AddController', ['$scope', '$http', '$location'
         if ($scope.markerTypes.indexOf($scope.type) > -1) {
             // new object has a point location associated with it.
             // add a marker for this point and set up events
+            var center = $scope.$parent.map.getCenter();
             $scope.object.loc = {
                 type: 'Point',
-                coordinates: [0, 0]
+                coordinates: [center.lng, center.lat]
             }
-            var center = $scope.$parent.map.getCenter();
-            $scope.object.loc.coordinates[0] = Math.round(center.lat  * Math.pow(10, 10)) / Math.pow(10, 10);
-            $scope.object.loc.coordinates[1] = Math.round(center.lng * Math.pow(10, 10)) / Math.pow(10, 10);
+            $scope.object.loc.coordinates[1] = Math.round(center.lat  * Math.pow(10, 10)) / Math.pow(10, 10);
+            $scope.object.loc.coordinates[0] = Math.round(center.lng * Math.pow(10, 10)) / Math.pow(10, 10);
             $scope.centerMarker = new L.marker(center, {
                 draggable: true,
                 title: 'Center Marker'
             }).on('move', function(e) {
-                $scope.object.loc.coordinates[0] = Math.round(e.latlng.lat * Math.pow(10, 10)) / Math.pow(10, 10);
-                $scope.object.loc.coordinates[1] = Math.round(e.latlng.lng * Math.pow(10, 10)) / Math.pow(10, 10);
+                $scope.object.loc.coordinates[1] = Math.round(e.latlng.lat * Math.pow(10, 10)) / Math.pow(10, 10);
+                $scope.object.loc.coordinates[0] = Math.round(e.latlng.lng * Math.pow(10, 10)) / Math.pow(10, 10);
             }).addTo($scope.$parent.map);
             $scope.$parent.map.on('click', function(e) {
                 $scope.centerMarker.setLatLng([e.latlng.lat, e.latlng.lng]);
@@ -273,6 +307,7 @@ riverBetaControllers.controller('EditController', ['$scope', '$http', '$location
 
 riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route', '$routeParams', 'riverMethods',
     function($scope, $http, $route, $routeParams, riverMethods) {
+        riverMethods.resourceQuery($scope, 'river')
         $scope.type = $routeParams.type;
         $scope.types = $scope.type + 's';
         $scope.id = $routeParams.id;
@@ -283,8 +318,11 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
             if ($scope.type == 'rapid') {
                 zoom = 14;
             }
-            if ($scope.object.hasOwnProperty('loc') && $scope.object.loc.type == "Point") {
-                $scope.$parent.map.setZoom(zoom).panTo([$scope.object.loc.coordinates[0], $scope.object.loc.coordinates[1]])
+            if ($routeParams.hasOwnProperty('lat')) {
+                // do nothing here
+                //$scope.$parent.map.setView([$routeParams.lat, $routeParams.lng], $routeParams.zoom);
+            } else if ($scope.object.hasOwnProperty('loc') && $scope.object.loc.type == "Point") {
+                $scope.$parent.map.setZoom(zoom).panTo([$scope.object.loc.coordinates[1], $scope.object.loc.coordinates[0]])
             } else if ($scope.object.hasOwnProperty('marker')) {
                 $scope.$parent.map.setZoom(zoom).panTo([$scope.object.marker.lat, $scope.object.marker.lng])
             } else if ($scope.object.hasOwnProperty('path')) {
@@ -298,6 +336,9 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
                     case 'river':
                         // get all river stuff
                         $scope.object_runs = _.findWhere($scope.$parent.runs, {river: $scope.id});
+                        break;
+                    case 'gauge':
+                        riverMethods.getFullGauge($scope.$parent, $scope.object, $route.reload);
                         break;
                 }
             }

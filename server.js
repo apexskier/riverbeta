@@ -38,7 +38,7 @@ var Gauge = mongoose.model('Gauge', {
     source : String,
     river : { type: ObjectId, ref: 'River' }
 });
-var Run = mongoose.model('Run', {
+var RunSchema = mongoose.Schema({
     name : String,
     description : String,
     rating : { // class
@@ -62,7 +62,9 @@ var Run = mongoose.model('Run', {
         coordinates : []
     }
 });
-var Rapid = mongoose.model('Rapid', {
+RunSchema.index({ loc : '2dsphere' });
+var Run = mongoose.model('Run', RunSchema);
+var RapidSchema = mongoose.Schema({
     name : String,
     description : String,
     rating : Number,
@@ -73,6 +75,8 @@ var Rapid = mongoose.model('Rapid', {
         coordinates : []
     }
 });
+RapidSchema.index({ loc : '2dsphere' });
+var Rapid = mongoose.model('Rapid', RapidSchema);
 
 var map = {
     rivers: River,
@@ -84,6 +88,32 @@ var map = {
 /* * * *
  * API *
  * * * */
+app.get('/api/:type/near/:lat/:lng/:dist', function(req, res) {
+    map[req.params.type].geoNear({ type: "Point", coordinates: [parseFloat(req.params.lng), parseFloat(req.params.lat)] }, {
+        maxDistance: parseFloat(req.params.dist) / 2,
+        spherical: true
+    }, function(err, things) {
+        if (err) {
+            res.send(err);
+        } else {
+            res.json(_.map(things, function(thing) {
+                return thing.obj;
+            }));
+        }
+    });
+});
+app.get('/api/:type/dist/:lat/:lng', function(req, res) {
+    map[req.params.type].geoNear({ type: "Point", coordinates: [parseFloat(req.params.lng), parseFloat(req.params.lat)] }, {
+        maxDistance: 0.17431959979659852,
+        spherical: true
+    }, function(err, things) {
+        if (err) {
+            res.send(err);
+        } else {
+            res.json(things);
+        }
+    });
+});
 app.get('/api/:type', function(req, res) {
     map[req.params.type].find(function(err, things) {
         if (err)
@@ -93,7 +123,6 @@ app.get('/api/:type', function(req, res) {
 });
 app.get('/api/:type/:id', function(req, res) {
     map[req.params.type].findById(req.params.id, function(err, thing) {
-        console.log(thing);
         if (err) {
             res.send(err);
         } else if (!thing) {
@@ -116,9 +145,6 @@ app.delete('/api/:type/:id', function(req, res) {
             res.json(things);
         });
     });
-});
-app.get('/api/:nw,:ne,:se,:sw', function(req, res) {
-
 });
 
 app.post('/api/rivers', function(req, res) {
@@ -143,10 +169,8 @@ app.post('/api/runs', function(req, res) {
     req.body.loc = _.reject(geoJson.features, function(path) {
         return path.geometry.type != 'LineString';
     })[0].geometry;
-    console.log(req.body);
     if (!!req.body.loc.coordinates.length) {
         Run.create(req.body, function(err, thing) {
-            console.log(thing);
             if (err) {
                 res.send(err);
             } else {

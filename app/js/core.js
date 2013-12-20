@@ -30,6 +30,19 @@ riverBeta.config(['$routeProvider',
                 templateUrl: 'partials/detail/index.html',
                 controller: 'DetailController'
             })
+            .when('/edit/:type/:id/:lat,:lng,:zoom', {
+                templateUrl: 'partials/edit/index.html',
+                controller: 'EditController'
+            })
+            .when('/detail/:type/:id/:lat,:lng,:zoom', {
+                templateUrl: 'partials/detail/index.html',
+                controller: 'DetailController'
+            })
+            .when('/:lat,:lng,:zoom', {
+                templateUrl: 'partials/index.html',
+                controller: 'IndexController',
+                reloadOnSearch: false
+            })
             .otherwise({
                 redirectTo: '/'
             });
