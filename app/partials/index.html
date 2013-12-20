@@ -1,27 +1,27 @@
 <h2>Index</h2>
 
-<h3>{{ rivers.length }} Rivers known</h3>
+<h3>{{ rivers.length }} Rivers loaded</h3>
 <ul>
     <li ng-repeat="river in rivers"><a href="#/detail/river/{{ river._id }}">{{ river.name }} {{ river.size }}</a>
     <span class="delete" ng-click="deleteThing(river._id, 'river')">(delete)</span>
     <a href="#/edit/river/{{river._id}}">(edit)</a></li>
 </ul>
 
-<h3>{{ runs.length }} Runs known</h3>
+<h3>{{ runs.length }} Runs loaded</h3>
 <ul>
     <li ng-repeat="run in runs"><a href="#/detail/run/{{ run._id }}">{{ run.name }} {{ run.river|getRiverName:this }}</a>
     <span class="delete" ng-click="deleteThing(run._id, 'run')">(delete)</span>
     <a href="#/edit/run/{{run._id}}">(edit)</a></li>
 </ul>
 
-<h3>{{ gauges.length }} Gauges known</h3>
+<h3>{{ gauges.length }} Gauges loaded</h3>
 <ul>
     <li ng-repeat="gauge in gauges"><a href="#/detail/gauge/{{ gauge._id }}">{{ gauge.river|getRiverName:this }} {{ gauge.code }}</a>
     <span class="delete" ng-click="deleteThing(gauge._id, 'gauge')">(delete)</span>
     <a href="#/edit/gauge/{{gauge._id}}">(edit)</a></li>
 </ul>
 
-<h3>{{ rapids.length }} Rapids known</h3>
+<h3>{{ rapids.length }} Rapids loaded</h3>
 <ul>
     <li ng-repeat="rapid in rapids"><a href="#/detail/rapid/{{ rapid._id }}"> {{ rapid.name }}</a>
     <span class="delete" ng-click="deleteThing(rapid._id, 'rapid')">(delete)</span>

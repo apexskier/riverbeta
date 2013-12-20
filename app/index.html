@@ -7,11 +7,37 @@
 
     <link rel="stylesheet" href="lib/leaflet/leaflet.css">
     <title>Riverbeta.net</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html {
+            height: 100%;
+        }
+        body {
+            height: 100%;
+            margin: 0;
+        }
+        .container {
+            height: 100%;
+        }
+        #content {
+            width: 33%;
+            height: 100%;
+            position: absolute;
+            z-index: 5;
+            padding: 10px 20px;
+        }
+        .angular-leaflet-map {
+            margin-left: 33%;
+        }
+    </style>
 </head>
 <body onunload="">
     <div class="container" ng-controller="MapController">
-        <div ng-view></div>
-        <leaflet layers="layers" markers="markers" geojson="geojson" height="480px" width="640px"></leaflet>
+        <div id="content" ng-view></div>
+        <leaflet layers="layers" markers="markers" height="100%" width="67%"></leaflet>
     </div>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script><!-- load jquery -->
