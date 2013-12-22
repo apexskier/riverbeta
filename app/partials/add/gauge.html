@@ -1,8 +1,8 @@
 <label for="code">Code</label>
 <input type="text" name="code" ng-model="object.code">
-<select ng-model="object.source">
+<select required ng-model="object.source">
     <option selected="selected" value="">Select a source</option>
     <option value="usgs">USGS</option>
     <option value="wadoe">Washington State Dept of Ecology</option>
 </select>
-<select ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>
+<select required ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>

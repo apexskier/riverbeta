@@ -3,20 +3,8 @@
 <textarea name="description" ng-model="object.description">
 </textarea>
 <br>
-<select ng-model="object.rating">
-    <option value="1">I</option>
-    <option value="2">I+</option>
-    <option value="3">II</option>
-    <option value="4">II+</option>
-    <option value="5">III</option>
-    <option value="6">III+</option>
-    <option value="7">IV</option>
-    <option value="8">IV+</option>
-    <option value="9">V</option>
-    <option value="10">V+</option>
-    <option value="11">VI</option>
-</select>
-<select ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>
+<select required ng-model="object.rating" ng-options="r.key as r.val for r in ratings"></select>
+<select required ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>
 <br>
 <input name="geo_lng" ng-model="object.loc.coordinates[1]">
 <input name="geo_lng" ng-model="object.loc.coordinates[0]">

@@ -164,20 +164,13 @@ app.post('/api/rivers', function(req, res) {
 });
 
 app.post('/api/runs', function(req, res) {
-    var gpxPath = 'app/uploads/gpx/' + req.body.gpx_file.fileName;
-    var geoJson = togeojson.gpx(jsdom(fs.readFileSync(gpxPath, 'utf8')));
-    req.body.loc = _.reject(geoJson.features, function(path) {
-        return path.geometry.type != 'LineString';
-    })[0].geometry;
-    if (!!req.body.loc.coordinates.length) {
-        Run.create(req.body, function(err, thing) {
-            if (err) {
-                res.send(err);
-            } else {
-                res.json(thing);
-            }
-        });
-    }
+    Run.create(req.body, function(err, thing) {
+        if (err) {
+            res.send(err);
+        } else {
+            res.json(thing);
+        }
+    });
 });
 app.put('/api/runs/:id', function (req, res){
     return Run.findById(req.params.id, function (err, thing) {
@@ -255,18 +248,14 @@ app.get('/api/gauges/full/:gauge_id', function(req, res) {
                         res.json(info);
                     });
                 }).on('error', function(err) {
-                    console.log('Error getting gauge data: ', e);
+                    console.log('Error getting gauge data: ', err);
                 });
                 break;
         }
     });
 });
 app.post('/api/gauges', function(req, res) {
-    Gauge.create({
-        code: req.body.code,
-        source: req.body.source,
-        river: req.body.river_id
-    }, function(err, gauges) {
+    Gauge.create(req.body, function(err, gauges) {
         if (err)
             res.send(err);
 
@@ -312,8 +301,13 @@ app.post('/upload/run', function(req, res) {
             console.log('Error uploading: ' + err);
             return;
         }
+        var geoJson = togeojson.gpx(jsdom(fs.readFileSync(serverPath, 'utf8')));
+        geoJson = _.reject(geoJson.features, function(path) {
+            return path.geometry.type != 'LineString';
+        });
         res.send({
-            path: serverPath
+            path: serverPath,
+            geo_json: geoJson
         });
     });
 });

@@ -12,35 +12,27 @@ riverBeta.config(['$routeProvider',
         $routeProvider
             .when('/', {
                 templateUrl: 'partials/index.html',
-                controller: 'IndexController'
+                controller: 'IndexController',
+                reloadOnSearch: false
             })
             .when('/add/run', {
                 templateUrl: 'partials/add/run.html',
-                controller: 'RunAddController'
+                controller: 'RunAddController',
+                reloadOnSearch: false
             })
             .when('/add/:type', {
                 templateUrl: 'partials/add/index.html',
-                controller: 'AddController'
+                controller: 'AddController',
+                reloadOnSearch: false
             })
             .when('/edit/:type/:id', {
                 templateUrl: 'partials/edit/index.html',
-                controller: 'EditController'
+                controller: 'EditController',
+                reloadOnSearch: false
             })
             .when('/detail/:type/:id', {
                 templateUrl: 'partials/detail/index.html',
-                controller: 'DetailController'
-            })
-            .when('/edit/:type/:id/:lat,:lng,:zoom', {
-                templateUrl: 'partials/edit/index.html',
-                controller: 'EditController'
-            })
-            .when('/detail/:type/:id/:lat,:lng,:zoom', {
-                templateUrl: 'partials/detail/index.html',
-                controller: 'DetailController'
-            })
-            .when('/:lat,:lng,:zoom', {
-                templateUrl: 'partials/index.html',
-                controller: 'IndexController',
+                controller: 'DetailController',
                 reloadOnSearch: false
             })
             .otherwise({

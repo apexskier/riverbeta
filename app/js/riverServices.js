@@ -14,23 +14,20 @@ angular.module('riverServices', [])
                     $scope.markers[gauge._id] = {
                         lat: gauge.geo_lat,
                         lng: gauge.geo_lng,
-                        message: gauge.name,
                         layer: 'gauges'
                     };
                     gauge.marker = $scope.markers[gauge._id];
                     _.each(_.where($scope.runs, {gauge: gauge._id}), function(run) {
                         setColor($scope, run);
                     });
-                    if (typeof callback == 'function') {
-                        callback();
-                    }
+                    if (typeof callback == 'function') callback();
                 })
                 .error(function(data) {
                     console.log('Error getting gauge ' + gauge._id + ': ' + data);
                 });
         }
-        function setColor($scope, run) {
-            if (run.hasOwnProperty('path')) {
+        function setColor($scope, run, callback) {
+            if (run.hasOwnProperty('path') && !!run.gauge) {
                 gauge = _.findWhere($scope.gauges, {_id: run.gauge});
                 if (gauge && gauge.hasOwnProperty('data')) {
                     var current_flow = gauge.data[run.level.units].recent;
@@ -39,13 +36,14 @@ angular.module('riverServices', [])
                     var color = 'black';
                     if (current_flow > min_flow && current_flow < max_flow) {
                         // TODO: try to calculate this on a logarithmic scale eventually.
-                        color = 'hsl(' + (current_flow - min_flow) * 140 / (max_flow - min_flow) + ', 100%, 50%)';
+                        color = 'hsl(' + Math.log(current_flow - min_flow) * 140 / Math.log(max_flow - min_flow) + ', 100%, 50%)';
                     } else if (current_flow <= min_flow) {
                         color = 'hsl(0, 100%, 50%)';
                     } else if (current_flow >= max_flow) {
                         color = 'hsl(240, 100%, 50%)';
                     }
                     run.path.setStyle({ color: color });
+                    if (typeof callback == 'function') callback();
                 } else {
                     run.path.setStyle({ color: 'black'});
                     if (!gauge) {
@@ -53,47 +51,41 @@ angular.module('riverServices', [])
                             .success(function(gauge) {
                                 if (!_.where($scope.gauges, {_id: gauge._id}).length) {
                                     $scope.gauges.push(gauge);
-                                    getFullGauge($scope, gauge);
+                                    getFullGauge($scope, gauge, callback);
                                 }
                             })
                             .error(function(data) {
                                 console.log('Error loading thing: ' + data);
                             });
                     } else {
-                        getFullGauge($scope, gauge);
+                        getFullGauge($scope, gauge, callback);
                     }
                 }
             }
         }
-        function setUpRun($scope, run) {
+        function setUpRun($scope, run, callback) {
             if (!run.hasOwnProperty('path')) {
-                if (!!run.loc.coordinates.length) {
-                    run.path = new L.geoJson(run.loc, {
-                        style: 'black',
-                        weight: 10,
-                        opacity: 0.75
-                    })
-                    .on('click', function(e) {
-                        console.log(e);
-                        document.location.href = '/#/detail/run/' + run._id;
-                    });
-                    run.path.addTo($scope.map);
-                }
+                run.path = new L.geoJson(run.loc, {
+                    weight: 10,
+                    opacity: 0.75
+                })
+                .on('click', function(e) {
+                    console.log(e);
+                    document.location.href = '/#/detail/run/' + run._id;
+                });
+                run.path.addTo($scope.map);
             }
-            setColor($scope, run);
+            return setColor($scope, run, callback);
         }
         function setUpRapid($scope, rapid, callback) {
             console.log('adding rapid marker ' + rapid.name)
             $scope.markers[rapid._id] = {
                 lat: rapid.loc.coordinates[1],
                 lng: rapid.loc.coordinates[0],
-                message: rapid.name,
                 layer: 'rapids'
             };
             rapid.marker = $scope.markers[rapid._id];
-            if (typeof callback == 'function') {
-                callback();
-            }
+            if (typeof callback == 'function') callback();
         }
         function resourceQuery($scope, options, perItem, callback, center, distance) {
             var types = false;
@@ -115,9 +107,7 @@ angular.module('riverServices', [])
                             }
                         }
                     });
-                    if (typeof callback == 'function') {
-                        callback();
-                    }
+                    if (typeof callback == 'function') callback();
                 })
                 .error(function(data) {
                     console.log('Error loading ' + types + ': ' + data);

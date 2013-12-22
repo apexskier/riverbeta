@@ -33,15 +33,10 @@
     <option value="11">VI</option>
 </select>
 <br>
-<div ng-repeat="l in object.level">
-    <input type="number" ng-model="l.low" placeholder="Lowest runnable level"> to
-    <input type="number" ng-model="l.high" placeholder="Highest runnable level">
-    <select ng-model="l.units">
-        <option value="cfs" selected>CFS</option>
-        <option value="ft">Feet</option>
-        <option value="m">Meters</option>
-    </select>
-</div>
+<input type="number" ng-model="l.low" placeholder="Lowest runnable level"> to
+<input type="number" ng-model="l.high" placeholder="Highest runnable level">
+<select ng-model="l.units" ng-options="u.key as u.val for u in units"></select>
+<br>
 <select ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>
 <select ng-model="object.gauge" ng-options="gauge._id as gauge.code for gauge in gauges">
     <option val="">-- choose gauge --</option>

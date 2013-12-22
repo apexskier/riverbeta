@@ -1,52 +1,33 @@
 <h2>Add run</h2>
 <form>
+    <label for="name">Name</label>
     <input name="name" ng-model="object.name" placeholder="Name">
+    <br>
+    <label for="description">Description</label>
     <textarea name="description" ng-model="object.description"></textarea>
     <br>
-    <label>Class</label>
-    <select ng-model="object.rating.low">
-        <option value="0" selected>From</option>
-        <option value="1">I</option>
-        <option value="2">I+</option>
-        <option value="3">II</option>
-        <option value="4">II+</option>
-        <option value="5">III</option>
-        <option value="6">III+</option>
-        <option value="7">IV</option>
-        <option value="8">IV+</option>
-        <option value="9">V</option>
-        <option value="10">V+</option>
-        <option value="11">VI</option>
+    <label for="rating-low">Class</label>
+    <select name="rating-low" required ng-model="object.rating.low" ng-options="r.key as r.val for r in ratings">
+        <option value="" selected>From</option>
     </select>
-    <select ng-model="object.rating.high">
-        <option value="0" selected>To</option>
-        <option value="1">I</option>
-        <option value="2">I+</option>
-        <option value="3">II</option>
-        <option value="4">II+</option>
-        <option value="5">III</option>
-        <option value="6">III+</option>
-        <option value="7">IV</option>
-        <option value="8">IV+</option>
-        <option value="9">V</option>
-        <option value="10">V+</option>
-        <option value="11">VI</option>
+    <select name="rating-high" ng-model="object.rating.high" ng-options="r.key as r.val for r in ratings">
+        <option value="" selected>To</option>
     </select>
     <br>
-    <input type="number" ng-model="object.level.low" placeholder="Lowest runnable level">
-    <input type="number" ng-model="object.level.high" placeholder="Highest runnable level">
-    <select ng-model="object.level.units">
-        <option value="cfs" selected>CFS</option>
-        <option value="ft">Feet</option>
-        <option value="m">Meters</option>
-    </select>
-    <br>
+    <p>Runnable at
+        <input type="number" ng-model="object.level.low" placeholder="Lowest runnable level">
+        <input type="number" ng-model="object.level.high" placeholder="Highest runnable level">
+        <select ng-model="object.level.units" ng-options="u.key as u.val for u in units"></select>
+    </p>
     <select ng-model="object.river" ng-options="r._id as r.name for r in rivers"></select>
     <select ng-model="object.gauge" ng-options="g._id as g.name + ' - ' + g.code for g in gauges">
         <option value="">-- select gauge --</option>
     </select>
     <br>
-    <input type="file" name="gpx" ng-model="object.gpx" ng-file-select="onFileSelect($files)">
+    <input type="file" name="gpx" ng-model="object.gpx" ng-file-select="onFileSelect($files)"> {{ filestatus }}
+        <div ng-repeat="path in paths">
+            <span ng-click="goToPath($index)">{{ path.geometry.type }}</span>
+        </div>
     <br>
     <button type="submit" ng-click="createRun()">Add</button>
 </form>

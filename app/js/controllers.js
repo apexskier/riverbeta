@@ -1,7 +1,12 @@
 var riverBetaControllers = angular.module('riverBetaControllers', [ 'ngSanitize' ]);
 
-riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', '$routeParams', 'leafletData', 'leafletEvents', 'riverMethods',
-    function($scope, $http, $location, $routeParams, leafletData, leafletEvents, riverMethods) {
+riverBetaControllers.controller('MapController', ['$scope', '$http', '$location', '$window', '$routeParams', 'leafletData', 'leafletEvents', 'riverMethods',
+    function($scope, $http, $location, $window, $routeParams, leafletData, leafletEvents, riverMethods) {
+        console.log(($window.innerHeight - 30) + 'px');
+        $scope.marginTop = {'margin-top': ($window.innerHeight - 60) + 'px'};
+        angular.element($window).bind('resize',function() {
+            $scope.marginTop = {'margin-top': ($window.innerHeight - 60) + 'px'};
+        });
         angular.extend($scope, {
             tileLayer: "http://{s}.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png",
             maxZoom: 14,
@@ -51,7 +56,6 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                 position: 'topleft'
             },
             markers: {},
-            centerMarker: {},
             events: {
                 markers: {
                     enable: leafletEvents.getAvailableMarkerEvents()
@@ -62,23 +66,57 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
             runs: [],
             rapids: [],
             markerTypes: ['gauge', 'rapid', 'poi'],
+            myListeners: {},
+            ratings: [{
+                    val: "I",
+                    key: 1
+                }, {
+                    val: "I+",
+                    key: 2
+                }, {
+                    val: "II",
+                    key: 3
+                }, {
+                    val: "II+",
+                    key: 4
+                }, {
+                    val: "III",
+                    key: 5
+                }, {
+                    val: "III+",
+                    key: 6
+                }, {
+                    val: "IV",
+                    key: 7
+                }, {
+                    val: "IV+",
+                    key: 8
+                }, {
+                    val: "V",
+                    key: 9
+                }, {
+                    val: "V+",
+                    key: 10
+                }, {
+                    val: "VI",
+                    key: 11
+                }],
+            units: [{
+                    val: "cfs",
+                    key: "CFS"
+                }, {
+                    val: "ft",
+                    key: "Feet"
+                }, {
+                    val: "m",
+                    key: "Meters"
+                }]
         });
         riverMethods.resourceQuery($scope, 'river')
 
         leafletData.getMap().then(function(map) {
             $scope.map = map;
             console.log($scope);
-            var locurlre = /(?:-?\d{1,3}\.?\d*),(?:-?\d{1,3}\.?\d*),(?:\d{1,3})/
-            var locurlmatch = locurlre.exec($location.path())
-            var locateSetView = false;
-            if (locurlmatch) {
-                locurlmatch = locurlmatch[0].split(',');
-                $scope.map.setView([locurlmatch[0], locurlmatch[1]], locurlmatch[2]);
-            } else if ($location.path().length < 2) {
-                locateSetView = true;
-            }
-            $scope.map.locate({setView: locateSetView, maxZoom: 12});
-
             function getLocalData() {
                 var bounds = $scope.map.getBounds();
                 var sw = bounds.getSouthWest();
@@ -112,15 +150,26 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                 var center = $scope.map.getCenter();
                 var lat = Math.round(center.lat * 1000000) / 1000000;
                 var lng = Math.round(center.lng * 1000000) / 1000000;
-                if (locurlre.test($location.path())) {
-                    $location.path($location.path().replace(locurlre, lat + ',' + lng + ',' + args.leafletEvent.target._zoom));
-                } else {
-                    $location.path($location.path() + '/' + lat + ',' + lng + ',' + args.leafletEvent.target._zoom);
-                }
+                $location.search({
+                    lat: lat,
+                    lng: lng,
+                    z: args.leafletEvent.target._zoom
+                });
                 getLocalData();
             }
-            $scope.$on('leafletDirectiveMap.moveend', updateUrl);
-            $scope.$on('leafletDirectiveMap.zoomend', updateUrl);
+
+            var locateSetView = false;
+            coords = $location.search();
+            if (coords.hasOwnProperty('lat')) {
+                $scope.map.setView([parseFloat(coords.lat), parseFloat(coords.lng)], parseInt(coords.z));
+                getLocalData();
+            } else if ($location.path().length < 2) {
+                locateSetView = true;
+            }
+            map.locate({setView: locateSetView, maxZoom: 12});
+
+            $scope.myListeners.moveend = $scope.$on('leafletDirectiveMap.moveend', updateUrl);
+            $scope.myListeners.zoomend = $scope.$on('leafletDirectiveMap.zoomend', updateUrl);
         });
 
         $scope.$on('leafletDirectiveMap.locationfound', function(e, data) {
@@ -136,6 +185,11 @@ riverBetaControllers.controller('MapController', ['$scope', '$http', '$location'
                 $location.path('/detail/gauge/' + args.markerName);
             }
         });
+    }]);
+
+riverBetaControllers.controller('ControlsController', ['$scope', '$location',
+    function($scope, $location) {
+
     }]);
 
 riverBetaControllers.controller('IndexController', ['$scope', '$http', '$routeParams',
@@ -212,46 +266,75 @@ riverBetaControllers.controller('AddController', ['$scope', '$http', '$location'
 
 riverBetaControllers.controller('RunAddController', ['$scope', '$http', '$location', '$upload', 'riverMethods',
     function($scope, $http, $location, $upload, riverMethods) {
-        $scope.selectedFiles = [];
-        $scope.onFileSelect = function($files) {
-            $scope.progress = [];
-            $scope.upload = [];
-            $scope.uploadResult = [];
-            $scope.selectedFiles = $files;
-            $scope.dataUrls = [];
+        $scope.filestatus = "";
+        $scope.pathObjects = {};
+        $scope.selectedPath = false;
+        $scope.goToPath = function(index) {
+            $scope.$parent.map.fitBounds($scope.pathObjects[index].getBounds(), { padding: [20, 20] });
+            $scope.selectedPath = index;
         }
-        $scope.createRun = function() {
-            for (var i = 0; i < $scope.selectedFiles.length; i++) {
-                var file = $scope.selectedFiles[i];
-                $scope.progress[i] = 0;
+        $scope.onFileSelect = function($files) {
+            removePaths();
+            $scope.filestatus = "Processing file";
+            $scope.upload = [];
+            for (var i = 0; i < $files.length; i++) {
                 $scope.upload[i] = $upload.upload({
                     url: '/upload/run',
                     data: { },
-                    file: file
+                    file: $files[i]
                 }).then(function(response) {
-                    console.log('Uploaded: ' + response.data.path);
+                    console.log(response);
+                    $scope.filestatus = "";
+                    $scope.paths = response.data.geo_json;
+                    $scope.pathObjects = []
+                    _.each($scope.paths, function(path) {
+                        $scope.pathObjects.push(new L.geoJson(path, {
+                            color: 'black',
+                            weight: 10,
+                            opacity: 0.5
+                        }).addTo($scope.$parent.map));
+                    });
                     $scope.object.gpx_file = {
                         size: response.config.file.size,
                         fileName: response.config.file.name,
                         lastModified: response.config.file.lastModifiedDate
                     }
-                    $http.post('/api/runs', $scope.object)
-                        .success(function(data) {
-                            $scope.$parent.runs.push(data);
-                            riverMethods.setUpRun($scope.$parent, data);
-                            console.log(data);
-                            $location.path('/detail/run/' + data._id);
-                        })
-                        .error(function(data) {
-                            console.log('Error: ' + data);
-                        });
+                    if ($scope.paths.length == 1) {
+                        $scope.selectedPath = 1;
+                    }
                 }, function(err) {
                     console.log('Error uploading: ' + err);
+                    $scope.filestatus('Error with files');
                 }, function(e) {
                     console.log('percent: ' + parseInt(100.0 * e.loaded / e.total));
                 });
             }
+        }
+        $scope.createRun = function() {
+            if (!$scope.selectedPath) {
+                $scope.object.loc = $scope.paths[$scope.selectedPath].geometry;
+                $http.post('/api/runs', $scope.object)
+                    .success(function(data) {
+                        removePaths();
+                        $scope.$parent.runs.push(data);
+                        riverMethods.setUpRun($scope.$parent, data);
+                        console.log(data);
+                        $location.path('/detail/run/' + data._id);
+                    })
+                    .error(function(data) {
+                        console.log('Error: ' + data);
+                    });
+            } else {
+                alert('Select a path by clicking on it');
+            }
         };
+        $scope.$on('$destroy', removePaths);
+        function removePaths() {
+            _.each($scope.pathObjects, function(p) {
+                $scope.$parent.map.removeLayer(p);
+            });
+            $scope.pathObjects = [];
+        }
     }]);
 
 riverBetaControllers.controller('EditController', ['$scope', '$http', '$location', '$upload', '$route', '$routeParams', 'riverMethods',
@@ -321,14 +404,14 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
             if ($routeParams.hasOwnProperty('lat')) {
                 // do nothing here
                 //$scope.$parent.map.setView([$routeParams.lat, $routeParams.lng], $routeParams.zoom);
-            } else if ($scope.object.hasOwnProperty('loc') && $scope.object.loc.type == "Point") {
-                $scope.$parent.map.setZoom(zoom).panTo([$scope.object.loc.coordinates[1], $scope.object.loc.coordinates[0]])
             } else if ($scope.object.hasOwnProperty('marker')) {
                 $scope.$parent.map.setZoom(zoom).panTo([$scope.object.marker.lat, $scope.object.marker.lng])
             } else if ($scope.object.hasOwnProperty('path')) {
                 $scope.$parent.map.fitBounds($scope.object.path.getBounds(), { padding: [20, 20] });
             } else {
-                console.log("can't pan to");
+                if ($scope.object.hasOwnProperty('loc') && $scope.object.loc.type == "Point") {
+                    $scope.$parent.map.setZoom(zoom).panTo([$scope.object.loc.coordinates[1], $scope.object.loc.coordinates[0]])
+                }
                 switch ($scope.type) {
                     case 'rapid':
                         riverMethods.setUpRapid($scope.$parent, $scope.object, $route.reload);
@@ -341,6 +424,14 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
                         riverMethods.getFullGauge($scope.$parent, $scope.object, $route.reload);
                         break;
                 }
+            }
+            switch ($scope.type) {
+                case 'run':
+                    console.log($scope.object);
+                    if ($scope.object.hasOwnProperty('gauge')) {
+                        $scope.object_gauge = _.findWhere($scope.$parent.gauges, {_id: $scope.object.gauge });
+                    }
+                    break;
             }
         } else {
             $http.get('/api/' + $scope.types + '/' + $scope.id)
@@ -356,15 +447,14 @@ riverBetaControllers.controller('DetailController', ['$scope', '$http', '$route'
                                 riverMethods.getFullGauge($scope.$parent, $scope.object, $route.reload);
                                 break;
                             case 'run':
-                                riverMethods.setUpRun($scope.$parent, $scope.object);
-                                $route.reload();
+                                riverMethods.setUpRun($scope.$parent, $scope.object, $route.reload);
                                 break;
                             case 'rapid':
                                 riverMethods.setUpRapid($scope.$parent, $scope.object, $route.reload);
                                 break;
                         }
                     } else {
-                        console.log('no such ' + $scope.type);
+                        console.log('No such ' + $scope.type);
                     }
                 })
                 .error(function(data) {

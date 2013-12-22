@@ -1,2 +1,8 @@
-<p>{{ object.river|getRiverName:this.$parent }}</p>
+<h3>Class {{ ratings[object.rating.low - 1].val }}<span ng-if="object.rating.high"> - {{ ratings[object.rating.high - 1].val }}</span></h3>
+
+<p ng-if="object.level.low">In from {{ object.level.low }} to {{ object.level.high }}
+{{ object.level.units }}<span ng-if="object_gauge"> on the
+<a href="/#/detail/gauge/{{ object.gauge }}">{{ object_gauge.name }} gauge</a><span
+    ng-if="object_gauge.data"> (currently {{ object_gauge.data[object.level.units].recent }} {{ object.level.units }})</span></span>.</p>
+
 <p>{{ object.description }}</p>
